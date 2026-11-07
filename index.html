@@ -100,7 +100,15 @@ function dateAdd(date,n){const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getU
 function shortDate(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('en-AU',{day:'numeric',month:'short'});}
 function dayName(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('en-AU',{weekday:'short'});}
 function diffDays(a,b){return Math.round((new Date(b+'T12:00:00Z')-new Date(a+'T12:00:00Z'))/86400000);}
-function num(id,prompt,expected,unit,explanation,hint,level=1,extra={}){return {topic:id,kind:'numeric',prompt,expected:round(expected,5),unit,explanation,hint,level,tolerance:extra.tolerance??Math.max(0.000001,Math.abs(expected)*0.012),...extra};}
+function numericPrecision(value,extra={}){
+ if(Number.isInteger(extra.precision))return extra.precision;
+ if(value!==0&&Math.abs(value)<0.1)return 3;
+ return Number.isInteger(value)?0:1;
+}
+function num(id,prompt,expected,unit,explanation,hint,level=1,extra={}){
+ const precision=numericPrecision(expected,extra);
+ return {topic:id,kind:'numeric',prompt,expected:round(expected,precision),rawExpected:expected,precision,unit,explanation,hint,level,tolerance:Math.pow(10,-precision)/2+1e-9,...extra};
+}
 function mcq(id,prompt,answer,wrong,explanation,hint,level=1,code=''){let options=shuffle([...new Set([String(answer),...wrong.map(String)])]);if(options.length<3)options.push('None of these');return {topic:id,kind:'mcq',prompt,expected:String(answer),options,explanation,hint,level,code};}
 function codeq(id,prompt,code,answer,wrong,explanation,hint,level=1){return mcq(id,prompt,answer,wrong,explanation,hint,level,code);}
 function makeQuestion(id,level=1){
@@ -114,12 +122,12 @@ function makeQuestion(id,level=1){
    num(id,`A resistor experiences ${V} V and ${I} A. Calculate its power dissipation.`,V*I,'W',`Power P = VI = ${V} × ${I} = ${V*I} W.`,'Use voltage multiplied by current.')]);}
  case 'E2':{
   const a=pick([2,3,4,6,8]),b=pick([2,3,4,6,8]);const series=a+b,parallel=a*b/(a+b);
-  return level===1&&Math.random()<.5?num(id,`Resistors of ${a} Ω and ${b} Ω are connected in SERIES. Find equivalent resistance.`,series,'Ω',`Series: ${a}+${b} = ${series} Ω.`,'Series resistances add.'):num(id,`Resistors of ${a} Ω and ${b} Ω are connected in PARALLEL. Find the equivalent resistance (2 d.p.).`,parallel,'Ω',`R = (${a}×${b})/(${a}+${b}) = ${round(parallel,2)} Ω. This is smaller than both individual resistors.`,'For two parallel resistors, multiply then divide by the sum.',2,{tolerance:.021});}
+  return level===1&&Math.random()<.5?num(id,`Resistors of ${a} Ω and ${b} Ω are connected in SERIES. Find equivalent resistance.`,series,'Ω',`Series: ${a}+${b} = ${series} Ω.`,'Series resistances add.'):num(id,`Resistors of ${a} Ω and ${b} Ω are connected in PARALLEL. Find the equivalent resistance (1 d.p. if needed).`,parallel,'Ω',`R = (${a}×${b})/(${a}+${b}) = ${round(parallel,1)} Ω. This is smaller than both individual resistors.`,'For two parallel resistors, multiply then divide by the sum.',2,{tolerance:.021});}
  case 'E3':{
   const V=pick([6,9,12,15,18,24]);const a=pick([2,3,4,6]);const b=pick([2,3,4,6]);const out=V*b/(a+b);
   return pick([
-   num(id,`Unloaded divider: Vs = ${V} V, Rtop = ${a} kΩ and Rbottom = ${b} kΩ. Find Vout relative to ground.`,out,'V',`Vout = ${V} × ${b}/(${a}+${b}) = ${round(out,3)} V.`,'The resistor connected between Vout and ground goes on top of the fraction.',2,{tolerance:.021}),
-   num(id,`Two resistors ${a} kΩ and ${b} kΩ are in series across ${V} V. What is the TOTAL current?`,V/(a+b),'mA',`I = ${V}/(${a}+${b}) kΩ = ${round(V/(a+b),3)} mA.`,'V divided by kΩ produces mA.',1,{tolerance:.021})]);}
+   num(id,`Unloaded divider: Vs = ${V} V, Rtop = ${a} kΩ and Rbottom = ${b} kΩ. Find Vout relative to ground.`,out,'V',`Vout = ${V} × ${b}/(${a}+${b}) = ${round(out,1)} V.`,'The resistor connected between Vout and ground goes on top of the fraction.',2,{tolerance:.021}),
+   num(id,`Two resistors ${a} kΩ and ${b} kΩ are in series across ${V} V. What is the TOTAL current?`,V/(a+b),'mA',`I = ${V}/(${a}+${b}) kΩ = ${round(V/(a+b),1)} mA.`,'V divided by kΩ produces mA.',1,{tolerance:.021})]);}
  case 'E4':{
   const x=rand(10,21),a=rand(2,5),b=rand(2,5);const out=x-a-b;
   return pick([
@@ -127,32 +135,32 @@ function makeQuestion(id,level=1){
    num(id,`KVL: a ${x} V source drives a loop with drops of ${a} V, ${b} V, and Vx. Find Vx.`,out,'V',`KVL: ${x}−${a}−${b}−Vx=0, so Vx=${out} V.`,'Total voltage rises equal total voltage drops.')]);}
  case 'E5':{
   const Vs=pick([8,10,12,15,18]);const Ra=pick([2,3,4,5]);const Rb=pick([2,3,4,6]);
-  if(level>=3&&Math.random()<.45){const Rmid=pick([2,3,4]);const Vb=Vs*Rb/(Ra+Rmid+Rb);return num(id,`Two unknown node voltages VA and VB: a ${Vs} V source connects through ${Ra} kΩ to VA; ${Rmid} kΩ connects VA to VB; ${Rb} kΩ connects VB to ground. Find VB.`,Vb,'V',`KCL at VA: (VA−${Vs})/${Ra}+(VA−VB)/${Rmid}=0. At VB: (VB−VA)/${Rmid}+VB/${Rb}=0. Solving gives VB=${round(Vb,3)} V.`,'Write a separate KCL equation at both nodes.',3,{tolerance:.03});}
+  if(level>=3&&Math.random()<.45){const Rmid=pick([2,3,4]);const Vb=Vs*Rb/(Ra+Rmid+Rb);return num(id,`Two unknown node voltages VA and VB: a ${Vs} V source connects through ${Ra} kΩ to VA; ${Rmid} kΩ connects VA to VB; ${Rb} kΩ connects VB to ground. Find VB.`,Vb,'V',`KCL at VA: (VA−${Vs})/${Ra}+(VA−VB)/${Rmid}=0. At VB: (VB−VA)/${Rmid}+VB/${Rb}=0. Solving gives VB=${round(Vb,1)} V.`,'Write a separate KCL equation at both nodes.',3,{tolerance:.03});}
   const inject=level>=2?pick([0,1,2]):0;const V=(Vs/Ra+inject)/(1/Ra+1/Rb);
-  return num(id,`Unknown node V connects to ${Vs} V through ${Ra} kΩ and to ground through ${Rb} kΩ.${inject?` A ${inject} mA current source also injects current INTO V from ground.`:''} Find V using KCL.`,V,'V',`Using outgoing currents: (V−${Vs})/${Ra} + V/${Rb}${inject?` − ${inject}`:''} = 0 (resistance in kΩ and currents in mA). Solving yields V = ${round(V,3)} V.`,'Write the two resistor currents leaving V. Subtract any current-source injection.',inject?2:1,{tolerance:.03});}
+  return num(id,`Unknown node V connects to ${Vs} V through ${Ra} kΩ and to ground through ${Rb} kΩ.${inject?` A ${inject} mA current source also injects current INTO V from ground.`:''} Find V using KCL.`,V,'V',`Using outgoing currents: (V−${Vs})/${Ra} + V/${Rb}${inject?` − ${inject}`:''} = 0 (resistance in kΩ and currents in mA). Solving yields V = ${round(V,1)} V.`,'Write the two resistor currents leaving V. Subtract any current-source injection.',inject?2:1,{tolerance:.03});}
  case 'E6':{
   const Vs=pick([8,12,16]),Ra=pick([2,4]),Rb=pick([2,4,6]),inject=pick([1,2]);const sourceV=Vs*Rb/(Ra+Rb);const sourceI=inject*Ra*Rb/(Ra+Rb);const total=sourceV+sourceI;
-  return num(id,`Node V has a ${Vs} V source through ${Ra} kΩ, a ${Rb} kΩ path to ground and a ${inject} mA source injecting current INTO V from ground. Use superposition to find V.`,total,'V',`Voltage-source contribution: ${Vs}×${Rb}/(${Ra}+${Rb})=${round(sourceV,3)} V. Current-source contribution: ${inject}×(${Ra}×${Rb}/(${Ra}+${Rb}))=${round(sourceI,3)} V. Add = ${round(total,3)} V.`,'For voltage source alone open the current source; for current source alone short the voltage source.',2,{tolerance:.03});}
+  return num(id,`Node V has a ${Vs} V source through ${Ra} kΩ, a ${Rb} kΩ path to ground and a ${inject} mA source injecting current INTO V from ground. Use superposition to find V.`,total,'V',`Voltage-source contribution: ${Vs}×${Rb}/(${Ra}+${Rb})=${round(sourceV,1)} V. Current-source contribution: ${inject}×(${Ra}×${Rb}/(${Ra}+${Rb}))=${round(sourceI,1)} V. Add = ${round(total,1)} V.`,'For voltage source alone open the current source; for current source alone short the voltage source.',2,{tolerance:.03});}
  case 'E7':return mcq(id,'When determining Thévenin resistance, what should happen to a dependent source?', 'Keep it active',['Replace it with a short','Replace it with an open','Always remove its controlling variable'],'Dependent sources must remain active; independent sources are zeroed.','Dependent means controlled by a circuit variable.',2);
  case 'E8':{
   const V=pick([9,12,18,24]),a=pick([2,3,4,6]),b=pick([2,3,4,6]);const vth=V*b/(a+b),rth=a*b/(a+b);
   return pick([
-   num(id,`A ${V} V source feeds Rtop=${a} kΩ in series with Rbottom=${b} kΩ to ground. Output terminals are the junction and ground (no load). What is Vth?`,vth,'V',`Vth is the open-circuit output voltage: ${V}×${b}/(${a}+${b})=${round(vth,3)} V.`,'The open-circuit voltage is a voltage divider.',1,{tolerance:.021}),
-   num(id,`Same type of network: Rtop=${a} kΩ from a voltage source to the output node, Rbottom=${b} kΩ from output to ground. Find Rth as seen from output to ground.`,rth,'kΩ',`Turn off the ideal independent voltage source (replace with short). The two resistors are now parallel: (${a}×${b})/(${a}+${b}) = ${round(rth,3)} kΩ.`,'Short the ideal voltage source, then inspect the resulting connections.',2,{tolerance:.021}),
-   num(id,`A Thévenin network has Vth=${round(vth,2)} V and Rth=${round(rth,2)} kΩ. Find the Norton current.`,round(vth,2)/round(rth,2),'mA',`Norton current In=Vth/Rth = ${round(vth,2)}/${round(rth,2)} = ${round(round(vth,2)/round(rth,2),3)} mA.`,'Divide Vth by Rth. V/kΩ gives mA.',2,{tolerance:.035})]);}
+   num(id,`A ${V} V source feeds Rtop=${a} kΩ in series with Rbottom=${b} kΩ to ground. Output terminals are the junction and ground (no load). What is Vth?`,vth,'V',`Vth is the open-circuit output voltage: ${V}×${b}/(${a}+${b})=${round(vth,1)} V.`,'The open-circuit voltage is a voltage divider.',1,{tolerance:.021}),
+   num(id,`Same type of network: Rtop=${a} kΩ from a voltage source to the output node, Rbottom=${b} kΩ from output to ground. Find Rth as seen from output to ground.`,rth,'kΩ',`Turn off the ideal independent voltage source (replace with short). The two resistors are now parallel: (${a}×${b})/(${a}+${b}) = ${round(rth,1)} kΩ.`,'Short the ideal voltage source, then inspect the resulting connections.',2,{tolerance:.021}),
+   num(id,`A Thévenin network has Vth=${round(vth,1)} V and Rth=${round(rth,1)} kΩ. Find the Norton current.`,round(vth,1)/round(rth,1),'mA',`Norton current In=Vth/Rth = ${round(vth,1)}/${round(rth,1)} = ${round(round(vth,1)/round(rth,1),1)} mA.`,'Divide Vth by Rth. V/kΩ gives mA.',2,{tolerance:.035})]);}
  case 'E9':{
   const Vs=pick([5,9,12]),drops=pick([1,2]),vf=pick([1.8,2,2.2]),R=pick([200,300,500,1000]);const mA=(Vs-drops*vf)/R*1000;
-  return num(id,`${Vs} V supplies ${drops} forward-biased LED${drops>1?'s':''} in series, each dropping ${vf} V, through a ${R} Ω resistor. Calculate LED current.`,mA,'mA',`I = (${Vs} − ${drops}×${vf})/${R} = ${round(mA,3)} mA after converting from A.`,'Subtract ALL LED voltage drops before using Ohm’s law.',2,{tolerance:.03});}
+  return num(id,`${Vs} V supplies ${drops} forward-biased LED${drops>1?'s':''} in series, each dropping ${vf} V, through a ${R} Ω resistor. Calculate LED current.`,mA,'mA',`I = (${Vs} − ${drops}×${vf})/${R} = ${round(mA,1)} mA after converting from A.`,'Subtract ALL LED voltage drops before using Ohm’s law.',2,{tolerance:.03});}
  case 'E10':return mcq(id,'An enhancement N-MOSFET has VGS=1 V and threshold Vth=2 V. What is the simplest switching approximation?', 'OFF (cutoff)',['ON (guaranteed saturation)','Both ON and OFF','Short circuit'],'Because VGS < Vth, the idealised enhancement MOSFET is off.','Compare gate–source voltage to threshold.');
  case 'E11':{
   const gate=pick(['AND','OR','NAND','NOR','XOR']);const a=rand(0,1),b=rand(0,1);const val={AND:a&&b?1:0,OR:a||b?1:0,NAND:a&&b?0:1,NOR:a||b?0:1,XOR:a!==b?1:0}[gate];
   return mcq(id,`For a ${gate} gate with A=${a} and B=${b}, what is the output?`,String(val),[String(1-val),'Output is undefined','Needs an analogue voltage'],`${gate} with inputs ${a}, ${b} outputs ${val}. Remember NOT gates invert their underlying operation.`,'Create a tiny truth table, then evaluate the gate.',1);}
  case 'E12':{
   const a=pick([2,4,6,8]),b=pick([2,4,6,8]);const parallel=a+b;const series=a*b/(a+b);
-  return pick([num(id,`${a} µF and ${b} µF capacitors are connected in PARALLEL. Find equivalent capacitance.`,parallel,'µF',`Parallel capacitors add: ${a}+${b}=${parallel} µF.`,'For capacitors, parallel values ADD.'),num(id,`${a} µF and ${b} µF capacitors are connected in SERIES. Find equivalent capacitance.`,series,'µF',`Series pair: (${a}×${b})/(${a}+${b})=${round(series,3)} µF.`,'Capacitors in series combine like resistors in parallel.',2,{tolerance:.022})]);}
+  return pick([num(id,`${a} µF and ${b} µF capacitors are connected in PARALLEL. Find equivalent capacitance.`,parallel,'µF',`Parallel capacitors add: ${a}+${b}=${parallel} µF.`,'For capacitors, parallel values ADD.'),num(id,`${a} µF and ${b} µF capacitors are connected in SERIES. Find equivalent capacitance.`,series,'µF',`Series pair: (${a}×${b})/(${a}+${b})=${round(series,1)} µF.`,'Capacitors in series combine like resistors in parallel.',2,{tolerance:.022})]);}
  case 'E13':{
   const C=pick([2,4,5,10,20]),V=pick([2,3,5,8]),ms=pick([2,5,10]);
-  return Math.random()<.5?num(id,`A ${C} µF capacitor has ${V} V across it. Calculate stored charge.`,C*V,'µC',`Q=CV=${C} µF×${V} V=${C*V} µC.`,'µF × V gives µC.'):num(id,`Voltage across a ${C} µF capacitor increases linearly by ${V} V in ${ms} ms. Find capacitor current.`,C*V/ms,'mA',`i=C×(ΔV/Δt)=${C}×${V}/${ms}=${round(C*V/ms,3)} mA.`,'µF × V / ms gives mA.',2,{tolerance:.025});}
+  return Math.random()<.5?num(id,`A ${C} µF capacitor has ${V} V across it. Calculate stored charge.`,C*V,'µC',`Q=CV=${C} µF×${V} V=${C*V} µC.`,'µF × V gives µC.'):num(id,`Voltage across a ${C} µF capacitor increases linearly by ${V} V in ${ms} ms. Find capacitor current.`,C*V/ms,'mA',`i=C×(ΔV/Δt)=${C}×${V}/${ms}=${round(C*V/ms,1)} mA.`,'µF × V / ms gives mA.',2,{tolerance:.025});}
  case 'E14':{
   const R=pick([2,3,5,10,20]),C=pick([1,2,4,10,47]);const tau=R*C;
   return Math.random()<.6?num(id,`An RC circuit has R=${R} kΩ and C=${C} µF. Find the time constant τ.`,tau,'ms',`τ=RC=${R} kΩ×${C} µF=${tau} ms.`,'kΩ times µF directly gives ms.'):mcq(id,`An initially uncharged capacitor charges toward a constant final voltage. Roughly what fraction of final voltage is reached after ONE time constant?`,'63.2%',['36.8%','50%','86.5%'],'Charging: 1−e^(−1)≈0.632, so ~63.2% after one τ.','Charging reaches slightly more than half after 1τ.',2);}
@@ -190,9 +198,9 @@ function makeQuestion(id,level=1){
  case 'M2':{
   const type=rand(1,3);
   if(type===1){const carrier=pick([1,2,3]),mobility=pick([.05,.1,.2]);const n=carrier*1e21,sigma=1.6e-19*n*mobility;
-    return num(id,`Assume electrons dominate conduction. n=${carrier}×10²¹ m⁻³, electron mobility=${mobility} m²/(V·s), charge magnitude q=1.6×10⁻¹⁹ C. Calculate σ=nqμ.`,sigma,'S/m',`σ=${carrier}×10²¹×1.6×10⁻¹⁹×${mobility}=${round(sigma,5)} S/m.`,'Multiply carrier concentration × charge × mobility.',2,{tolerance:.035});}
-  if(type===2){const sigma=pick([2,4,5,8]);return num(id,`A material has electrical conductivity σ = ${sigma} S/m. Find resistivity ρ in Ω·m.`,1/sigma,'Ω·m',`Resistivity is the reciprocal: ρ=1/${sigma}=${round(1/sigma,4)} Ω·m.`,'Use ρ=1/σ.',2,{tolerance:.002});}
-  const nm=pick([400,500,620,775]);return num(id,`Light has wavelength ${nm} nm. Find photon energy in eV using E(eV)≈1240/λ(nm).`,1240/nm,'eV',`E≈1240/${nm}=${round(1240/nm,3)} eV.`,'Divide 1240 by wavelength in nm.',2,{tolerance:.025});}
+    return num(id,`Assume electrons dominate conduction. n=${carrier}×10²¹ m⁻³, electron mobility=${mobility} m²/(V·s), charge magnitude q=1.6×10⁻¹⁹ C. Calculate σ=nqμ.`,sigma,'S/m',`σ=${carrier}×10²¹×1.6×10⁻¹⁹×${mobility}=${round(sigma,1)} S/m.`,'Multiply carrier concentration × charge × mobility.',2,{tolerance:.035});}
+  if(type===2){const sigma=pick([2,4,5,8]);return num(id,`A material has electrical conductivity σ = ${sigma} S/m. Find resistivity ρ in Ω·m.`,1/sigma,'Ω·m',`Resistivity is the reciprocal: ρ=1/${sigma}=${round(1/sigma,3)} Ω·m.`,'Use ρ=1/σ.',2,{precision:3,tolerance:.00051});}
+  const nm=pick([400,500,620,775]);return num(id,`Light has wavelength ${nm} nm. Find photon energy in eV using E(eV)≈1240/λ(nm).`,1240/nm,'eV',`E≈1240/${nm}=${round(1240/nm,1)} eV.`,'Divide 1240 by wavelength in nm.',2,{tolerance:.025});}
  case 'M3':{
   const dopant=pick([['phosphorus','n-type','electrons'],['boron','p-type','holes'],['antimony','n-type','electrons']]);
   return mcq(id,`Doping silicon with ${dopant[0]} creates ${dopant[1]}. Which are the majority charge carriers?`,dopant[2],[dopant[2]==='electrons'?'holes':'electrons','neutrons','ions'],`For ${dopant[1]}, the majority carriers are ${dopant[2]}.`,'N-type → negative electrons; p-type → positive holes.');}
@@ -243,7 +251,13 @@ function focusPracticeControl(){
 }
 function beginPractice(id,forReview=false){if(!TMAP[id])id=recommended().id;practice={topic:id,q:makeQuestion(id,questionLevel(id)),answer:'',hint:false,marked:false,correct:false,forReview};state.nextSuggested=id;save();navigate('practice');requestAnimationFrame(focusPracticeControl);}
 function useNext(){const id=recommended().id;beginPractice(id);}
-function grade(q,answer){if(q.kind==='mcq')return String(answer).trim()===q.expected;const n=parseUnitNumber(answer,q.unit);return Number.isFinite(n)&&Math.abs(n-q.expected)<=q.tolerance;}
+function grade(q,answer){
+ if(q.kind==='mcq')return String(answer).trim()===q.expected;
+ const n=parseUnitNumber(answer,q.unit);
+ if(!Number.isFinite(n))return false;
+ if(!Number.isInteger(q.precision))return Math.abs(n-q.expected)<=q.tolerance;
+ return Math.abs(n-q.expected)<=Math.pow(10,-q.precision)/2+1e-8;
+}
 function parseUnitNumber(raw,want){let t=String(raw||'').trim().replace(/,/g,'').replace(/−/g,'-').replace(/μ/g,'µ');const m=t.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*(.*)$/);if(!m)return NaN;let n=Number(m[1]);if(!Number.isFinite(n))return NaN;let from=m[2].trim();if(!from||from===want)return n;const norm=s=>s.replace(/\s/g,'').replace(/ohms?/gi,'Ω').replace(/Ohm/g,'Ω').replace(/uA/g,'µA').replace(/uF/g,'µF').replace(/us/g,'µs').replace(/^μ/,'µ');from=norm(from);const group={A:1,mA:.001,'µA':.000001,V:1,mV:.001,Ω:1,'kΩ':1e3,'MΩ':1e6,F:1,'µF':1e-6,nF:1e-9,pF:1e-12,s:1,ms:.001,'µs':1e-6,W:1,mW:.001};const unitGroup=s=>s.includes('Ω')?'R':s.endsWith('A')?'I':s.endsWith('V')?'V':s.endsWith('F')?'C':s.endsWith('s')?'t':s.endsWith('W')?'P':null;
  if(group[from]!==undefined&&group[want]!==undefined&&unitGroup(from)===unitGroup(want))return n*group[from]/group[want];return NaN;}
 function recordAttempt(q,ans,correct,hinted,source='practice'){const p=state.progress[q.topic];p.attempts++;if(correct)p.correct++;p.streak=correct?p.streak+1:0;const delta=correct?(hinted?8:Math.max(8,20-Math.floor(p.mastery/16))):(-8-Math.floor(p.mastery/25));p.mastery=Math.min(100,Math.max(0,p.mastery+delta));p.lastReviewed=presentDate();p.nextDue=dateAdd(presentDate(),correct?([1,1,2,4,6,8][Math.min(p.streak,5)]):1);p.provisional=false;state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,explanation:q.explanation});if(state.history.length>1000)state.history=state.history.slice(-1000);state.autoQuestionCount++;state.nextSuggested=correct?null:q.topic;save();}
