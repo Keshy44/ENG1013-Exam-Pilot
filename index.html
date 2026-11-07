@@ -222,7 +222,12 @@ function seed(){
 }
 function load(){try{const v=JSON.parse(localStorage.getItem(STORE));if(!v||v.version!==1||!v.progress)return null;return v;}catch{return null;}}
 let state=load()||seed();
-for(const t of TOPICS)if(!state.progress[t.id])state.progress[t.id]={mastery:0,attempts:0,correct:0,streak:0,nextDue:null,lastReviewed:null,provisional:false};
+for(const t of TOPICS){
+ if(!state.progress[t.id])state.progress[t.id]={mastery:0,attempts:0,correct:0,streak:0,nextDue:null,lastReviewed:null,provisional:false};
+ const p=state.progress[t.id];
+ if(!Number.isInteger(p.independentStreak))p.independentStreak=0;
+ if(!('completedAt' in p))p.completedAt=(p.mastery>=85&&p.streak>=3)?(p.lastReviewed||presentDate()):null;
+}
 let route=(location.hash||'#dashboard').replace('#','');if(!VIEWS.some(v=>v[0]===route))route='dashboard';
 let practice={topic:null,q:null,answer:'',hint:false,marked:false,correct:false,forReview:false};
 let filter='all',topicFilter='all',topicSearch='',activeLesson=null,toastTimer=null;
@@ -236,20 +241,50 @@ function attempted(){return state.history.length;}
 function attemptsCorrect(){return state.history.filter(h=>h.correct).length;}
 function overallAccuracy(){return attempted()?Math.round(100*attemptsCorrect()/attempted()):0;}
 function averageMastery(tops){return tops.length?Math.round(tops.reduce((s,t)=>s+(state.progress[t.id]?.mastery||0),0)/tops.length):0;}
-function doneCount(){return activeTopics().filter(t=>state.progress[t.id].mastery>=75&&state.progress[t.id].streak>=2).length;}
+function topicDue(id){const p=state.progress[id];return !!(p?.completedAt&&p.nextDue&&p.nextDue<=presentDate());}
+function topicComplete(id){return !!state.progress[id]?.completedAt;}
+function completionProgress(id){return Math.min(3,state.progress[id]?.independentStreak||0);}
+function doneCount(){return activeTopics().filter(t=>topicComplete(t.id)).length;}
 function minutesToday(){return state.sessions.filter(s=>s.date===presentDate()).reduce((s,x)=>s+Number(x.minutes||0),0);}
 function minutesTotal(){return state.sessions.reduce((s,x)=>s+Number(x.minutes||0),0);}
 function topicStats(id){const p=state.progress[id];return p.attempts?`${p.correct}/${p.attempts} correct`:(p.provisional?'Checkpoint passed in chat':'Not yet tested here');}
-function topicStatus(id){const p=state.progress[id];if(isDeferred(TMAP[id]))return 'Deprioritised';if(p.streak>=3&&p.mastery>=85)return 'Strong — recheck later';if(p.provisional&&p.attempts===0)return 'Provisional';if(p.attempts===0)return 'Not assessed';if(p.mastery<35)return 'Needs foundations';if(p.mastery<75)return 'Developing';return 'Review-ready';}
-function candidateScore(t){const p=state.progress[t.id];const plan=currentPlan(),today=presentDate();const sectionBonus={Electrical:25,Software:18,Materials:7,Ethics:-5};let score=(100-p.mastery)*.55+t.weight*4+(p.nextDue&&p.nextDue<=today?35:0)+(plan.topics.includes(t.id)?45:0)+(p.attempts===0?5:0)+sectionBonus[t.section];if(t.id===state.nextSuggested)score+=32;if(t.id===state.history.at(-1)?.topic)score-=25;return score;}
-function recommended(){const options=activeTopics();return options.sort((a,b)=>candidateScore(b)-candidateScore(a))[0]||TMAP.E5;}
+function topicStatus(id){
+ const p=state.progress[id];
+ if(isDeferred(TMAP[id]))return 'Deprioritised';
+ if(topicDue(id))return 'Complete — one retention check due';
+ if(topicComplete(id))return 'Complete — move on; review '+(p.nextDue||'later');
+ if(p.provisional&&p.attempts===0)return 'Provisional';
+ if(p.attempts===0)return 'Not assessed';
+ return 'Learning — '+completionProgress(id)+'/3 independent correct';
+}
+function candidateScore(t){
+ const p=state.progress[t.id],plan=currentPlan(),today=presentDate();
+ const bonus={Electrical:25,Software:18,Materials:7,Ethics:-5};
+ if(topicComplete(t.id)&&!topicDue(t.id))return -1e6;
+ if(topicDue(t.id))return 75+bonus[t.section]+Math.min(30,Math.max(0,diffDays(p.nextDue,today))*5);
+ let score=(100-p.mastery)*.55+t.weight*4+(plan.topics.includes(t.id)?45:0)+(p.attempts===0?5:0)+bonus[t.section];
+ if(t.id===state.nextSuggested)score+=30;
+ if(t.id===state.history.at(-1)?.topic)score-=12;
+ return score;
+}
+function recommended(excludeId=null){
+ const options=activeTopics().filter(t=>t.id!==excludeId&&(!topicComplete(t.id)||topicDue(t.id)));
+ const candidates=options.length?options:activeTopics().filter(t=>t.id!==excludeId);
+ return [...candidates].sort((a,b)=>candidateScore(b)-candidateScore(a))[0]||TMAP.E5;
+}
 function questionLevel(id){const p=state.progress[id];return p.mastery>=70?3:p.mastery>=35?2:1;}
+function freshQuestion(id){
+ let q=makeQuestion(id,questionLevel(id));
+ const recent=state.history.filter(h=>h.topic===id).slice(-2).map(h=>h.prompt);
+ for(let i=0;i<8&&recent.includes(q.prompt);i++)q=makeQuestion(id,questionLevel(id));
+ return q;
+}
 function focusPracticeControl(){
  if(route!=='practice')return;
- const selector=practice.marked?'[data-action="nextQuestion"]':'#numericAnswer, .answer-options .option.chosen, .answer-options .option';
+ const selector=practice.marked?(topicComplete(practice.topic)?'[data-action="adaptive"]':'[data-action="nextQuestion"]'):'#numericAnswer, .answer-options .option.chosen, .answer-options .option';
  document.querySelector(selector)?.focus({preventScroll:true});
 }
-function beginPractice(id,forReview=false){if(!TMAP[id])id=recommended().id;practice={topic:id,q:makeQuestion(id,questionLevel(id)),answer:'',hint:false,marked:false,correct:false,forReview};state.nextSuggested=id;save();navigate('practice');requestAnimationFrame(focusPracticeControl);}
+function beginPractice(id,forReview=false){if(!TMAP[id])id=recommended().id;practice={topic:id,q:freshQuestion(id),answer:'',hint:false,marked:false,correct:false,forReview};state.nextSuggested=id;save();navigate('practice');requestAnimationFrame(focusPracticeControl);}
 function useNext(){const id=recommended().id;beginPractice(id);}
 function grade(q,answer){
  if(q.kind==='mcq')return String(answer).trim()===q.expected;
@@ -260,7 +295,36 @@ function grade(q,answer){
 }
 function parseUnitNumber(raw,want){let t=String(raw||'').trim().replace(/,/g,'').replace(/−/g,'-').replace(/μ/g,'µ');const m=t.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*(.*)$/);if(!m)return NaN;let n=Number(m[1]);if(!Number.isFinite(n))return NaN;let from=m[2].trim();if(!from||from===want)return n;const norm=s=>s.replace(/\s/g,'').replace(/ohms?/gi,'Ω').replace(/Ohm/g,'Ω').replace(/uA/g,'µA').replace(/uF/g,'µF').replace(/us/g,'µs').replace(/^μ/,'µ');from=norm(from);const group={A:1,mA:.001,'µA':.000001,V:1,mV:.001,Ω:1,'kΩ':1e3,'MΩ':1e6,F:1,'µF':1e-6,nF:1e-9,pF:1e-12,s:1,ms:.001,'µs':1e-6,W:1,mW:.001};const unitGroup=s=>s.includes('Ω')?'R':s.endsWith('A')?'I':s.endsWith('V')?'V':s.endsWith('F')?'C':s.endsWith('s')?'t':s.endsWith('W')?'P':null;
  if(group[from]!==undefined&&group[want]!==undefined&&unitGroup(from)===unitGroup(want))return n*group[from]/group[want];return NaN;}
-function recordAttempt(q,ans,correct,hinted,source='practice'){const p=state.progress[q.topic];p.attempts++;if(correct)p.correct++;p.streak=correct?p.streak+1:0;const delta=correct?(hinted?8:Math.max(8,20-Math.floor(p.mastery/16))):(-8-Math.floor(p.mastery/25));p.mastery=Math.min(100,Math.max(0,p.mastery+delta));p.lastReviewed=presentDate();p.nextDue=dateAdd(presentDate(),correct?([1,1,2,4,6,8][Math.min(p.streak,5)]):1);p.provisional=false;state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,explanation:q.explanation});if(state.history.length>1000)state.history=state.history.slice(-1000);state.autoQuestionCount++;state.nextSuggested=correct?null:q.topic;save();}
+function recordAttempt(q,ans,correct,hinted,source='practice'){
+ const p=state.progress[q.topic];
+ const wasComplete=topicComplete(q.topic),wasReview=topicDue(q.topic),independent=correct&&!hinted;
+ p.attempts++;if(correct)p.correct++;
+ p.streak=correct?p.streak+1:0;
+ p.independentStreak=independent?(p.independentStreak||0)+1:0;
+ const delta=correct?(hinted?8:Math.max(8,20-Math.floor(p.mastery/16))):(-8-Math.floor(p.mastery/25));
+ p.mastery=Math.min(100,Math.max(0,p.mastery+delta));
+ p.lastReviewed=presentDate();p.provisional=false;
+ state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,explanation:q.explanation});
+ if(state.history.length>1000)state.history=state.history.slice(-1000);
+ const recent=state.history.filter(h=>h.topic===q.topic&&['practice','mock'].includes(h.source)).slice(-3);
+ const distinct=new Set(recent.map(h=>h.prompt)).size>=2;
+ const needsIntermediate=['E5','E6','E8','E14','S9'].includes(q.topic);
+ const hasIntermediate=!needsIntermediate||recent.some(h=>h.level>=2);
+ const passed=p.independentStreak>=3&&recent.length===3&&distinct&&hasIntermediate;
+ if(wasComplete&&wasReview){
+   if(independent){p.nextDue=dateAdd(presentDate(),3);p.independentStreak=0;}
+   else{p.completedAt=null;p.nextDue=dateAdd(presentDate(),1);}
+ }else if(wasComplete){
+   if(!independent){p.completedAt=null;p.nextDue=dateAdd(presentDate(),1);}
+ }else if(passed){
+   p.completedAt=presentDate();p.nextDue=dateAdd(presentDate(),2);p.mastery=Math.max(75,p.mastery);
+ }else{
+   p.nextDue=dateAdd(presentDate(),1);
+ }
+ state.autoQuestionCount++;
+ state.nextSuggested=topicComplete(q.topic)?recommended(q.topic).id:q.topic;
+ save();
+}
 function submitPractice(){if(!practice.q||practice.marked)return;const ans=practice.answer;if(!String(ans).trim()){toast('Enter an answer before marking. Use "Skip / I don’t know" if needed.');return;}practice.marked=true;practice.correct=grade(practice.q,ans);recordAttempt(practice.q,ans,practice.correct,practice.hint);render();requestAnimationFrame(focusPracticeControl);}
 function skipQuestion(){if(!practice.q||practice.marked)return;practice.answer='IDK';practice.marked=true;practice.correct=false;recordAttempt(practice.q,'IDK',false,practice.hint);render();requestAnimationFrame(focusPracticeControl);}
 function fmtPct(a,b){return b?`${Math.round(100*a/b)}%`:'0%';}
