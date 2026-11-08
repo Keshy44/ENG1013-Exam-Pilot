@@ -5,7 +5,7 @@
 .circuit-figure{margin:15px 0;background:#0a1929;border:1px solid #294963;border-radius:14px;padding:12px 10px 9px;overflow:hidden}.circuit-svg{display:block;width:100%;height:auto;max-height:240px}.circuit-figure figcaption{font-size:12px;color:#a8bed0;line-height:1.5;text-align:center;margin-top:0}@media(max-width:550px){.circuit-figure{padding:7px 2px 8px}}
 </style><link rel="stylesheet" href="./calculator.css"></head><body>
 <div class="app"><aside class="sidebar"><div class="brand"><div class="logo">1013</div><div><strong>Exam Pilot</strong><small>ENG1013 · Smart Systems</small></div></div><nav class="nav" id="nav"></nav><div class="sidebar-foot"><div class="pill" style="display:inline-block;margin-bottom:8px">🎯 Exam target: 30/40</div><div>16 Nov 2026 · 130-minute exam</div><div style="margin-top:5px">Progress saved in this browser.</div></div></aside>
-<main class="main"><header class="topbar"><div><div class="eyebrow" id="eyebrow">PERSONALISED EXAM PREPARATION</div><h1 id="pageTitle">Your revision command centre</h1><p class="sub" id="pageSub">Prioritise marks. Learn the essentials. Prove what you know.</p></div><div class="top-actions"><span class="pill" id="clockPill">16 NOV · EXAM</span><button class="btn small" id="chatButtonTop" type="button">✦ Ask ChatGPT</button></div></header><section id="view"></section><footer>ENG1013 Exam Pilot · An independent study companion based on supplied course materials. Not an official Monash resource. Question predictions are not guaranteed. Your data is stored locally unless you explicitly export it. <span style="white-space:nowrap">· Build 1.6 · All-topic variety</span></footer></main>
+<main class="main"><header class="topbar"><div><div class="eyebrow" id="eyebrow">PERSONALISED EXAM PREPARATION</div><h1 id="pageTitle">Your revision command centre</h1><p class="sub" id="pageSub">Prioritise marks. Learn the essentials. Prove what you know.</p></div><div class="top-actions"><span class="pill" id="clockPill">16 NOV · EXAM</span><button class="btn small" id="chatButtonTop" type="button">✦ Ask ChatGPT</button></div></header><section id="view"></section><footer>ENG1013 Exam Pilot · An independent study companion based on supplied course materials. Not an official Monash resource. Question predictions are not guaranteed. Your data is stored locally unless you explicitly export it. <span style="white-space:nowrap">· Build 1.7 · Verified answers</span></footer></main>
 <aside class="calc-panel" id="calculatorPanel" aria-label="Scientific calculator" aria-labelledby="calcHeading">
  <div class="calc-header">
   <div><div class="calc-kicker">Exam tools · Keyboard-ready</div><h2 id="calcHeading">Scientific calculator</h2></div>
@@ -313,7 +313,7 @@ function makeOriginalQuestion(id,level=1,avoidVariants=[]){
   add('not-equal','What is printed?',
       ['value = '+val,'if value != 3 and value % 2 == 0:','    print("Valid")','else:','    print("Invalid")'],
       valid?'Valid':'Invalid',[valid?'Invalid':'Valid','True','SyntaxError'],
-      '!= is not equal. A remainder of zero means the value is even. Both tests must pass.',
+      `For value = ${val}: ${val} != 3 is ${val!==3?'True':'False'}, and ${val} % 2 = ${val%2}, so ${val%2} == 0 is ${even?'True':'False'}. Both must be True for Valid; therefore the program prints ${valid?'Valid':'Invalid'}.`,
       'Evaluate != and % before applying and.',2);
   const eligible=tasks.filter(t=>t.difficulty<=level);
   const unused=eligible.filter(t=>!avoidVariants.includes(t.key));
@@ -447,6 +447,7 @@ function grade(q,answer){
  const n=parseUnitNumber(answer,q.unit);
  if(!Number.isFinite(n))return false;
  if(!Number.isInteger(q.precision))return Math.abs(n-q.expected)<=q.tolerance;
+ if(q.precision===0)return Math.abs(n-q.expected)<1e-8; // exact whole-number questions
  return round(n,q.precision)===q.expected;
 }
 function parseUnitNumber(raw,want){let t=String(raw||'').trim().replace(/,/g,'').replace(/−/g,'-').replace(/μ/g,'µ');const m=t.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?)\s*(.*)$/);if(!m)return NaN;let n=Number(m[1]);if(!Number.isFinite(n))return NaN;let from=m[2].trim();if(!from||from===want)return n;const norm=s=>s.replace(/\s/g,'').replace(/ohms?/gi,'Ω').replace(/Ohm/g,'Ω').replace(/uA/g,'µA').replace(/uF/g,'µF').replace(/us/g,'µs').replace(/^μ/,'µ');from=norm(from);const group={A:1,mA:.001,'µA':.000001,V:1,mV:.001,Ω:1,'kΩ':1e3,'MΩ':1e6,F:1,'µF':1e-6,nF:1e-9,pF:1e-12,s:1,ms:.001,'µs':1e-6,W:1,mW:.001};const unitGroup=s=>s.includes('Ω')?'R':s.endsWith('A')?'I':s.endsWith('V')?'V':s.endsWith('F')?'C':s.endsWith('s')?'t':s.endsWith('W')?'P':null;
