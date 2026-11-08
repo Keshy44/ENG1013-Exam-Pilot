@@ -1,0 +1,30 @@
+/* Timed question and section speed rankings */
+.speed-timer-box{display:flex;align-items:center;gap:10px;margin:10px 0 15px;padding:10px 13px;border:1px solid #2d6274;border-radius:11px;background:#0b3041;flex-wrap:wrap}
+.speed-timer-label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#a8d8e2;font-weight:750}
+.speed-timer-value{font:800 23px/1.2 ui-monospace,Consolas,monospace;letter-spacing:.02em;color:#9df9ef}
+.speed-timer-context{font-size:11px;color:#b9d6e2;margin-left:auto}
+.speed-timer-box.finished{background:#0c302e;border-color:#33695e}
+.speed-intro{background:linear-gradient(135deg,#142f47,#103842);border:1px solid #316676;border-radius:17px;padding:22px;margin-bottom:16px}
+.speed-intro h2{font-size:25px;margin:0 0 8px}
+.speed-intro p{font-size:13px;color:#c6e2ed;margin:0 0 18px;max-width:760px}
+.speed-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.speed-metrics>div{border:1px solid #326275;border-radius:11px;background:#102838;padding:15px 11px}
+.speed-metrics strong{display:block;color:#90f4e6;font-size:25px;line-height:1.2}
+.speed-metrics span{font-size:11px;color:#b1c9d9}
+.speed-two-cols{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.speed-board{margin-top:14px;display:grid;gap:8px;max-height:560px;overflow:auto}
+.speed-board-row{background:#10273b;border:1px solid #2b4e66;border-radius:10px;padding:11px;display:flex;gap:10px;align-items:center}
+.speed-rank-no{font-weight:850;font-size:18px;color:#8cefe4;min-width:22px}
+.speed-entry{min-width:0;flex:1}
+.speed-entry strong{font-size:12px;display:block}
+.speed-entry small{display:block;color:#a5bfce;font-size:10px;line-height:1.5;margin-top:3px}
+.speed-board-result{text-align:right}
+.speed-board-result strong{display:block;color:#a9f4dc;font:800 17px ui-monospace,Consolas,monospace}
+.speed-board-result small{display:block;font-size:11px;color:#f4cf9a}
+.speed-formula{margin-top:16px}
+.speed-formula h2{margin-top:0}
+.speed-bonus{background:#0f3a37;border:1px solid #328c77;border-radius:11px;padding:12px 14px;margin:12px 0;color:#d4fbeb}
+.speed-bonus strong{color:#a2f4d6}
+.speed-old{background:#152a3b;border:1px solid #3f5c70;border-radius:11px;padding:12px 14px;margin:12px 0;color:#afc7d7}
+@media(max-width:1000px){.speed-two-cols{grid-template-columns:1fr}.speed-timer-context{margin-left:0}}
+@media(max-width:560px){.speed-intro{padding:15px}.speed-metrics{gap:6px}.speed-metrics>div{padding:9px 6px}.speed-metrics strong{font-size:19px}.speed-metrics span{font-size:10px}.speed-timer-value{font-size:20px}}
