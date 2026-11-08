@@ -313,7 +313,7 @@ function makeOriginalQuestion(id,level=1,avoidVariants=[]){
   add('not-equal','What is printed?',
       ['value = '+val,'if value != 3 and value % 2 == 0:','    print("Valid")','else:','    print("Invalid")'],
       valid?'Valid':'Invalid',[valid?'Invalid':'Valid','True','SyntaxError'],
-      `For value = ${val}: ${val} != 3 is ${val!==3?'True':'False'}, and ${val} % 2 = ${val%2}, so ${val%2} == 0 is ${even?'True':'False'}. Both must be True for Valid; therefore the program prints ${valid?'Valid':'Invalid'}.`,
+      `For value = ${val}: ${val} != 3 is ${val!==3?'True':'False'}, and ${val} % 2 = ${val%2}, so ${val%2} == 0 is ${val%2===0?'True':'False'}. Both must be True for Valid; therefore the program prints ${valid?'Valid':'Invalid'}.`,
       'Evaluate != and % before applying and.',2);
   const eligible=tasks.filter(t=>t.difficulty<=level);
   const unused=eligible.filter(t=>!avoidVariants.includes(t.key));
