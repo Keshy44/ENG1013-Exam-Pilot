@@ -5,7 +5,7 @@
 .circuit-figure{margin:15px 0;background:#0a1929;border:1px solid #294963;border-radius:14px;padding:12px 10px 9px;overflow:hidden}.circuit-svg{display:block;width:100%;height:auto;max-height:240px}.circuit-figure figcaption{font-size:12px;color:#a8bed0;line-height:1.5;text-align:center;margin-top:0}@media(max-width:550px){.circuit-figure{padding:7px 2px 8px}}
 </style><link rel="stylesheet" href="./calculator.css"></head><body>
 <div class="app"><aside class="sidebar"><div class="brand"><div class="logo">1013</div><div><strong>Exam Pilot</strong><small>ENG1013 · Smart Systems</small></div></div><nav class="nav" id="nav"></nav><div class="sidebar-foot"><div class="pill" style="display:inline-block;margin-bottom:8px">🎯 Exam target: 30/40</div><div>16 Nov 2026 · 130-minute exam</div><div style="margin-top:5px">Progress saved in this browser.</div></div></aside>
-<main class="main"><header class="topbar"><div><div class="eyebrow" id="eyebrow">PERSONALISED EXAM PREPARATION</div><h1 id="pageTitle">Your revision command centre</h1><p class="sub" id="pageSub">Prioritise marks. Learn the essentials. Prove what you know.</p></div><div class="top-actions"><span class="pill" id="clockPill">16 NOV · EXAM</span><button class="btn small" id="chatButtonTop" type="button">✦ Ask ChatGPT</button></div></header><section id="view"></section><footer>ENG1013 Exam Pilot · An independent study companion based on supplied course materials. Not an official Monash resource. Question predictions are not guaranteed. Your data is stored locally unless you explicitly export it. <span style="white-space:nowrap">· Build 1.4 · Scientific calculator</span></footer></main>
+<main class="main"><header class="topbar"><div><div class="eyebrow" id="eyebrow">PERSONALISED EXAM PREPARATION</div><h1 id="pageTitle">Your revision command centre</h1><p class="sub" id="pageSub">Prioritise marks. Learn the essentials. Prove what you know.</p></div><div class="top-actions"><span class="pill" id="clockPill">16 NOV · EXAM</span><button class="btn small" id="chatButtonTop" type="button">✦ Ask ChatGPT</button></div></header><section id="view"></section><footer>ENG1013 Exam Pilot · An independent study companion based on supplied course materials. Not an official Monash resource. Question predictions are not guaranteed. Your data is stored locally unless you explicitly export it. <span style="white-space:nowrap">· Build 1.5 · S3 question variety</span></footer></main>
 <aside class="calc-panel" id="calculatorPanel" aria-label="Scientific calculator" aria-labelledby="calcHeading">
  <div class="calc-header">
   <div><div class="calc-kicker">Exam tools · Keyboard-ready</div><h2 id="calcHeading">Scientific calculator</h2></div>
@@ -183,7 +183,7 @@ function num(id,prompt,expected,unit,explanation,hint,level=1,extra={}){
 }
 function mcq(id,prompt,answer,wrong,explanation,hint,level=1,code=''){let options=shuffle([...new Set([String(answer),...wrong.map(String)])]);if(options.length<3)options.push('None of these');return {topic:id,kind:'mcq',prompt,expected:String(answer),options,explanation,hint,level,code};}
 function codeq(id,prompt,code,answer,wrong,explanation,hint,level=1){return mcq(id,prompt,answer,wrong,explanation,hint,level,code);}
-function makeQuestion(id,level=1){
+function makeQuestion(id,level=1,avoidVariants=[]){
  const vi=pick([6,9,12,15,18,20,24]), r1=pick([2,3,4,5,6]), r2=pick([2,3,4,5,6,8]);
  switch(id){
  case 'E1':{
@@ -244,8 +244,82 @@ function makeQuestion(id,level=1){
   const a=pick([17,19,23,26,31]),b=pick([3,4,5,6]);const op=pick(['//','%','**']);let output=op==='//'?Math.floor(a/b):op==='%'?a%b:2**b;const snippet=op==='**'?`print(2 ** ${b})`:`print(${a} ${op} ${b})`;
   return codeq(id,'What does this Python code print?',snippet,String(output),[String(round(a/b,2)),String(a),String(op==='%'?Math.floor(a/b):a%b)],`${op==='//'?`// produces the floor of ${a}/${b}.`:op==='%'?'% produces the remainder after integer division.':'** means exponentiation.'} Output: ${output}.`,'// = floor division, % = remainder, ** = power.');}
  case 'S3':{
-  const x=pick([6,8,10,12]);const code=`x = ${x}\nif x > 5:\n    print("A")\nif x > 9:\n    print("B")\nelse:\n    print("C")`;
-  const result=x>9?'A then B':'A then C';return codeq(id,'What is printed, in order?',code,result,['A only','A then B','A then C','B only'].filter(x=>x!==result),`The first if executes. The else belongs only to the SECOND if. Result: ${result}.`,'There are two independent if statements; the else attaches to the second one.',2);}
+  const tasks=[];
+  const add=(key,prompt,lines,answer,wrong,why,hint,difficulty=1)=>tasks.push({key,prompt,code:lines.join('\n'),answer:String(answer),wrong,why,hint,difficulty});
+  const x=pick([4,6,8,10,12]);
+  const result=x>9?'A then B':'A then C';
+  add('independent-if','What does the following code print, in order?',
+      ['x = '+x,'if x > 3:','    print("A")','if x > 9:','    print("B")','else:','    print("C")'],
+      result,['A only','B only',result==='A then B'?'A then C':'A then B'],
+      'The two if statements are separate. The else attaches only to the second if. Output: '+result+'.',
+      'Trace each if separately, paying attention to the else.');
+  const score=pick([32,55,73,88,96]);
+  const grade=score>=80?'High':score>=50?'Medium':'Low';
+  add('if-elif-else','Which branch is executed?',
+      ['score = '+score,'if score >= 80:','    print("High")','elif score >= 50:','    print("Medium")','else:','    print("Low")'],
+      grade,['High','Medium','Low','High then Medium'].filter(v=>v!==grade),
+      'Only the first true branch executes in an if/elif/else chain. Output: '+grade+'.',
+      'Once a branch succeeds, later elif and else branches are skipped.');
+  const n=pick([2,4,6,8,10,12]),lo=pick([3,5,7]),hi=pick([9,11,13]);
+  const both=n>lo&&n<hi;
+  add('and','What does Python print?',
+      ['n = '+n,'print(n > '+lo+' and n < '+hi+')'],
+      both?'True':'False',[both?'False':'True','1','0'],
+      'Both comparisons must be true for and to be true. Result: '+(both?'True':'False')+'.',
+      'Evaluate each comparison and then apply and.');
+  const wet=pick([true,false]),temp=pick([12,18,24]),coat=temp<16||wet;
+  add('or','Which message is printed?',
+      ['temperature = '+temp,'raining = '+(wet?'True':'False'),'if temperature < 16 or raining:','    print("Jacket")','else:','    print("No jacket")'],
+      coat?'Jacket':'No jacket',[coat?'No jacket':'Jacket','Both messages','NameError'],
+      'or is true if either condition is true. The output is '+(coat?'Jacket':'No jacket')+'.',
+      'At least one side of or must be true.');
+  const active=pick([true,false]);
+  add('not','What is printed?',
+      ['active = '+(active?'True':'False'),'if not active:','    print("Disabled")','else:','    print("Enabled")'],
+      active?'Enabled':'Disabled',[active?'Disabled':'Enabled','True','False'],
+      'not reverses the Boolean condition. The output is '+(active?'Enabled':'Disabled')+'.',
+      'not True is False and not False is True.');
+  const k=pick([1,2,3,5,7,8,9]),inside=k>2&&k<=7;
+  add('chained-comparison','Which message does this code print?',
+      ['k = '+k,'if 2 < k <= 7:','    print("Inside")','else:','    print("Outside")'],
+      inside?'Inside':'Outside',[inside?'Outside':'Inside','Both messages','SyntaxError'],
+      'Both 2 < k and k <= 7 must hold. The answer is '+(inside?'Inside':'Outside')+'.',
+      'The lower bound excludes 2, whereas the upper bound includes 7.');
+  const av=pick([true,false]),bv=pick([true,false]),cv=pick([true,false]),combined=!av||(bv&&cv);
+  add('precedence','What is printed by the Boolean expression?',
+      ['a = '+(av?'True':'False'),'b = '+(bv?'True':'False'),'c = '+(cv?'True':'False'),'print(not a or b and c)'],
+      combined?'True':'False',[combined?'False':'True','None','NameError'],
+      'Operator precedence is not, then and, then or. Result: '+(combined?'True':'False')+'.',
+      'Evaluate not first, and second, or last.',2);
+  const connected=pick([true,false]),battery=pick([8,27,55]),nested=!connected?'Offline':battery<20?'Charge':'Run';
+  add('nested','Which message does this code print?',
+      ['connected = '+(connected?'True':'False'),'battery = '+battery,'if connected:','    if battery < 20:','        print("Charge")','    else:','        print("Run")','else:','    print("Offline")'],
+      nested,['Offline','Charge','Run','Nothing'].filter(v=>v!==nested),
+      'Check connected first. The nested test runs only if connected is true. Result: '+nested+'.',
+      'Use the indentation to identify which else belongs to which if.',2);
+  const x2=pick([4,7,9,12]),changed=x2>6?x2-2:x2+1;
+  add('variable-update','What number is printed?',
+      ['x = '+x2,'if x > 6:','    x = x - 2','else:','    x = x + 1','print(x)'],
+      changed,[x2,x2+2,x2-2,x2+1].filter(v=>v!==changed),
+      'The condition determines which assignment runs. The final value is '+changed+'.',
+      'Update the value of x before evaluating print(x).',2);
+  const den=pick([0,2,4,6]),safe=den!==0&&12/den>2;
+  add('short-circuit','What happens when the code runs?',
+      ['n = '+den,'if n != 0 and 12 / n > 2:','    print("Run")','else:','    print("Skip")'],
+      safe?'Run':'Skip',[safe?'Skip':'Run','ZeroDivisionError','No output'],
+      'and short-circuits. When n is zero, the division is never evaluated. Output: '+(safe?'Run':'Skip')+'.',
+      'Python skips the second condition in and if the first is false.',2);
+  const val=pick([2,3,4,5,6]),valid=val!==3&&val%2===0;
+  add('not-equal','What is printed?',
+      ['value = '+val,'if value != 3 and value % 2 == 0:','    print("Valid")','else:','    print("Invalid")'],
+      valid?'Valid':'Invalid',[valid?'Invalid':'Valid','True','SyntaxError'],
+      '!= is not equal. A remainder of zero means the value is even. Both tests must pass.',
+      'Evaluate != and % before applying and.',2);
+  const eligible=tasks.filter(t=>t.difficulty<=level);
+  const unused=eligible.filter(t=>!avoidVariants.includes(t.key));
+  const selected=pick(unused.length?unused:eligible);
+  return {...codeq(id,selected.prompt,selected.code,selected.answer,selected.wrong,selected.why,selected.hint,selected.difficulty),variant:selected.key};
+ }
  case 'S4':{
   const end=pick([5,6,7,8]);const start=pick([0,1,2]);let sum=0;for(let i=start;i<end;i++)sum+=i;
   const code=`total = 0\nfor i in range(${start}, ${end}):\n    total += i\nprint(total)`;
@@ -345,10 +419,13 @@ function recommended(excludeId=null){
  return [...candidates].sort((a,b)=>candidateScore(b)-candidateScore(a))[0]||TMAP.E5;
 }
 function questionLevel(id){const p=state.progress[id];return p.mastery>=70?3:p.mastery>=35?2:1;}
+function questionSignature(q){return String(q.prompt||'')+'\u0000'+String(q.code||'');}
 function freshQuestion(id){
- let q=makeQuestion(id,questionLevel(id));
- const recent=state.history.filter(h=>h.topic===id).slice(-2).map(h=>h.prompt);
- for(let i=0;i<8&&recent.includes(q.prompt);i++)q=makeQuestion(id,questionLevel(id));
+ const recent=state.history.filter(h=>h.topic===id).slice(-5);
+ const seen=new Set(recent.map(questionSignature));
+ const avoided=id==='S3'?recent.slice(-4).map(h=>h.variant||'independent-if'):[];
+ let q=makeQuestion(id,questionLevel(id),avoided);
+ for(let attempts=0;attempts<35&&seen.has(questionSignature(q));attempts++)q=makeQuestion(id,questionLevel(id),avoided);
  return q;
 }
 function focusPracticeControl(){
@@ -376,13 +453,14 @@ function recordAttempt(q,ans,correct,hinted,source='practice'){
  const delta=correct?(hinted?8:Math.max(8,20-Math.floor(p.mastery/16))):(-8-Math.floor(p.mastery/25));
  p.mastery=Math.min(100,Math.max(0,p.mastery+delta));
  p.lastReviewed=presentDate();p.provisional=false;
- state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,explanation:q.explanation});
+ state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,variant:q.variant||null,explanation:q.explanation});
  if(state.history.length>1000)state.history=state.history.slice(-1000);
  const recent=state.history.filter(h=>h.topic===q.topic&&['practice','mock'].includes(h.source)).slice(-3);
- const distinct=new Set(recent.map(h=>h.prompt)).size>=2;
+ const distinct=new Set(recent.map(questionSignature)).size>=2;
+ const diverseS3=q.topic!=='S3'||new Set(recent.map(h=>h.variant||'independent-if')).size>=3;
  const needsIntermediate=['E5','E6','E8','E14','S9'].includes(q.topic);
  const hasIntermediate=!needsIntermediate||recent.some(h=>h.level>=2);
- const passed=p.independentStreak>=3&&recent.length===3&&distinct&&hasIntermediate;
+ const passed=p.independentStreak>=3&&recent.length===3&&distinct&&hasIntermediate&&diverseS3;
  if(wasComplete&&wasReview){
    if(independent){p.nextDue=dateAdd(presentDate(),3);p.independentStreak=0;}
    else{p.completedAt=null;p.nextDue=dateAdd(presentDate(),1);}
