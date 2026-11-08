@@ -28,3 +28,12 @@
 .speed-old{background:#152a3b;border:1px solid #3f5c70;border-radius:11px;padding:12px 14px;margin:12px 0;color:#afc7d7}
 @media(max-width:1000px){.speed-two-cols{grid-template-columns:1fr}.speed-timer-context{margin-left:0}}
 @media(max-width:560px){.speed-intro{padding:15px}.speed-metrics{gap:6px}.speed-metrics>div{padding:9px 6px}.speed-metrics strong{font-size:19px}.speed-metrics span{font-size:10px}.speed-timer-value{font-size:20px}}
+/* Inactivity protection. Only the user can explicitly resume a paused timer. */
+.speed-pause-overlay{position:fixed;inset:0;z-index:80;background:rgba(4,13,25,.86);display:grid;place-items:center;padding:18px;backdrop-filter:blur(7px)}
+.speed-pause-overlay.hidden{display:none!important}
+.speed-pause-dialog{width:min(490px,100%);background:linear-gradient(150deg,#163449,#0c2132);border:1px solid #4fa0a3;border-radius:19px;padding:30px 25px;box-shadow:0 20px 70px rgba(0,0,0,.5);text-align:center}
+.speed-pause-icon{font-size:38px;display:inline-block;color:#a5f6df}
+.speed-pause-dialog h2{font-size:25px;line-height:1.25;margin:7px 0 11px}
+.speed-pause-dialog p{color:#c6dfeb;font-size:14px;line-height:1.55}
+.speed-pause-dialog .btn{margin-top:14px;width:100%;min-height:49px;font-size:15px}
+@media(max-width:560px){.speed-pause-dialog{padding:23px 15px}}
