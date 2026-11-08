@@ -4,6 +4,9 @@ on:
     paths:
       - 'index.html'
       - 'question-bank.js'
+      - 'speed-rankings.js'
+      - 'speed-rankings.css'
+      - 'scripts/audit-speed.cjs'
       - 'scripts/audit-questions.cjs'
       - '.github/workflows/question-audit.yml'
   workflow_dispatch:
@@ -22,3 +25,5 @@ jobs:
           python-version: '3.12'
       - name: Validate generated questions against Python
         run: node scripts/audit-questions.cjs
+      - name: Check question timers, inactivity pause and mastery-only points
+        run: node scripts/audit-speed.cjs
