@@ -1,0 +1,55 @@
+/* Scientific calculator dock • ENG1013 Exam Pilot */
+.app{grid-template-columns:252px minmax(0,1fr) 316px}
+.main{max-width:1380px;min-width:0}
+.calc-panel{position:sticky;top:0;align-self:start;height:100vh;min-width:0;background:#0b192a;border-left:1px solid #294258;padding:19px 14px;overflow:auto;z-index:7}
+.calc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:16px}
+.calc-kicker{font-size:10px;letter-spacing:.13em;font-weight:800;color:var(--cyan);text-transform:uppercase}
+.calc-header h2{font-size:18px;font-weight:780;letter-spacing:-.02em;line-height:1.2;margin:5px 0 0}
+.calc-close{display:none;background:#203b53;border:1px solid #416079;color:var(--text);border-radius:9px;padding:7px 11px;font-weight:700}
+.calc-body{border:1px solid #2c4e66;background:linear-gradient(155deg,#142b41,#0d1d30);border-radius:16px;padding:12px;box-shadow:0 14px 25px rgba(0,0,0,.14)}
+.calc-screen{border:1px solid #42617a;background:#081522;border-radius:12px;padding:11px;margin-bottom:10px}
+.calc-screen-head{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#adbdcf;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.calc-mode{border:1px solid #2b7f8e;border-radius:6px;background:#0d3c49;color:#9df6e7;font-weight:800;font-size:11px;padding:2px 7px}
+.calc-expression{display:block;width:100%;background:transparent;border:0;border-bottom:1px solid #2b3f56;color:#eaf7fe;font-family:ui-monospace,Consolas,monospace;font-size:16px;padding:13px 1px 11px;margin:0;outline:0;border-radius:0;min-width:0}
+.calc-expression:focus{border-color:#45d6d1;box-shadow:0 1px 0 #45d6d1}
+.calc-result{min-height:42px;font-family:ui-monospace,Consolas,monospace;font-size:26px;color:#8df3e5;font-weight:760;text-align:right;overflow-wrap:anywhere;line-height:1.4;padding:7px 0 0}
+.calc-status{font-size:10px;color:#a5c1d0;min-height:27px;margin:2px 0 0;line-height:1.35}
+.calc-status.calc-error{color:#ff999e}
+.calc-keys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.calc-key{min-width:0;min-height:43px;padding:4px 1px;display:grid;place-items:center;border-radius:9px;background:#20384e;border:1px solid #34546c;color:#f1f8fc;font-size:15px;font-weight:750}
+.calc-key:hover{background:#2d4d65;border-color:#5d95b1}
+.calc-key:active{transform:translateY(1px)}
+.calc-key.fn{font-size:12px;background:#172d41;color:#b8e7f3}
+.calc-key.op{color:#94f0e9;background:#173949;border-color:#31717e}
+.calc-key.alt{color:#ffdcaa;background:#3b322e;border-color:#6c5140}
+.calc-key.eq{background:#168e99;border-color:#55ccc9;color:#fff;font-size:21px}
+.calc-key.wide{grid-column:span 2}
+.calc-tools{display:flex;gap:7px;margin-top:10px}
+.calc-utility{flex:1;min-width:0;border:1px solid #3a5975;background:#17324a;border-radius:9px;color:#d7eff8;padding:9px 7px;font-size:12px;font-weight:750}
+.calc-utility:hover{background:#234560}
+.calc-notes{color:#a6bbcf;font-size:11px;line-height:1.55;margin:12px 2px}
+.calc-notes kbd{font-family:inherit;border:1px solid #3a5c75;border-radius:4px;background:#152c41;color:#d0edf4;padding:1px 4px}
+.calc-launcher{display:none;position:fixed;right:17px;bottom:16px;z-index:31;background:linear-gradient(135deg,#2884cf,#1ca59c);border:1px solid #6bbde0;border-radius:99px;color:white;padding:12px 17px;box-shadow:0 7px 25px rgba(0,0,0,.35);font-weight:800;font-size:13px}
+@media(min-width:1201px) and (max-width:1560px){
+ .app{grid-template-columns:208px minmax(0,1fr) 290px}
+ .sidebar{padding:19px 10px}
+ .calc-panel{padding:14px 9px}
+ .calc-key{min-height:40px}
+ .main{padding-left:22px;padding-right:22px}
+ .split{grid-template-columns:1fr}
+}
+@media(max-width:1200px){
+ .app{grid-template-columns:252px minmax(0,1fr)}
+ .calc-panel{position:fixed;top:0;right:0;bottom:0;width:min(350px,100vw);height:100dvh;box-shadow:-20px 0 60px rgba(0,0,0,.45);transform:translateX(105%);visibility:hidden;transition:transform .22s,visibility .22s;z-index:32}
+ .calc-panel.calc-open{transform:translateX(0);visibility:visible}
+ .calc-close,.calc-launcher{display:block}
+ .calc-panel{padding:17px 14px}
+ .toast{right:16px;bottom:70px}
+}
+@media(max-width:760px){
+ .app{display:block}
+ .calc-panel{width:min(360px,100vw);padding:16px 14px}
+ .calc-key{min-height:44px}
+ .calc-launcher{bottom:12px;right:12px}
+}
+@media(prefers-reduced-motion:reduce){.calc-panel{transition:none}.calc-key:active{transform:none}}
