@@ -55,7 +55,21 @@ verify('Timed attempts preserve their duration without altering grading',()=>{
  run("speedClock.resumedAt=Date.now()-20000;submitPractice()");
  assert.equal(run('practice.marked'),true);
  assert.equal(run('state.history[0].correct'),true);
- assert(run('state.history[0].elapsedSeconds')>120);
+ assert(run('state.history[0].elapsedSeconds')>=30);
+ assert(run('state.history[0].elapsedSeconds')<95); // AFK time beyond the grace period was excluded
+});
+verify('If still solving, keep all idle time rather than granting free speed points',()=>{
+ run("beginPractice('S5');speedClock.resumedAt=Date.now()-120000;speedClock.lastActivity=Date.now()-95000;speedTick()");
+ assert.equal(run('speedClock.paused'),'idle');
+ const prior=run('speedElapsedMs()');
+ run("speedClock.pausedAt-=10000;speedResumeClock('working')");
+ assert(run('speedElapsedMs()')>=prior+9000);
+});
+verify('First movement after a long gap pauses instead of silently resuming',()=>{
+ run("beginPractice('S6');speedClock.resumedAt=Date.now()-120000;speedClock.lastActivity=Date.now()-95000;speedActivity()");
+ assert.equal(run('speedClock.paused'),'idle');
+ run("speedResumeClock('away')");
+ assert.equal(run('speedClock.paused'),null);
 });
 verify('Three distinct correct unhinted questions earn points once',()=>{
  run("beginPractice('S3');speedClock.resumedAt=Date.now()-40000;practice.answer=practice.q.expected;submitPractice()");
