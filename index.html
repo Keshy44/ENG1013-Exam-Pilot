@@ -5,7 +5,7 @@
 .circuit-figure{margin:15px 0;background:#0a1929;border:1px solid #294963;border-radius:14px;padding:12px 10px 9px;overflow:hidden}.circuit-svg{display:block;width:100%;height:auto;max-height:240px}.circuit-figure figcaption{font-size:12px;color:#a8bed0;line-height:1.5;text-align:center;margin-top:0}@media(max-width:550px){.circuit-figure{padding:7px 2px 8px}}
 </style><link rel="stylesheet" href="./calculator.css"></head><body>
 <div class="app"><aside class="sidebar"><div class="brand"><div class="logo">1013</div><div><strong>Exam Pilot</strong><small>ENG1013 · Smart Systems</small></div></div><nav class="nav" id="nav"></nav><div class="sidebar-foot"><div class="pill" style="display:inline-block;margin-bottom:8px">🎯 Exam target: 30/40</div><div>16 Nov 2026 · 130-minute exam</div><div style="margin-top:5px">Progress saved in this browser.</div></div></aside>
-<main class="main"><header class="topbar"><div><div class="eyebrow" id="eyebrow">PERSONALISED EXAM PREPARATION</div><h1 id="pageTitle">Your revision command centre</h1><p class="sub" id="pageSub">Prioritise marks. Learn the essentials. Prove what you know.</p></div><div class="top-actions"><span class="pill" id="clockPill">16 NOV · EXAM</span><button class="btn small" id="chatButtonTop" type="button">✦ Ask ChatGPT</button></div></header><section id="view"></section><footer>ENG1013 Exam Pilot · An independent study companion based on supplied course materials. Not an official Monash resource. Question predictions are not guaranteed. Your data is stored locally unless you explicitly export it. <span style="white-space:nowrap">· Build 1.5 · S3 question variety</span></footer></main>
+<main class="main"><header class="topbar"><div><div class="eyebrow" id="eyebrow">PERSONALISED EXAM PREPARATION</div><h1 id="pageTitle">Your revision command centre</h1><p class="sub" id="pageSub">Prioritise marks. Learn the essentials. Prove what you know.</p></div><div class="top-actions"><span class="pill" id="clockPill">16 NOV · EXAM</span><button class="btn small" id="chatButtonTop" type="button">✦ Ask ChatGPT</button></div></header><section id="view"></section><footer>ENG1013 Exam Pilot · An independent study companion based on supplied course materials. Not an official Monash resource. Question predictions are not guaranteed. Your data is stored locally unless you explicitly export it. <span style="white-space:nowrap">· Build 1.6 · All-topic variety</span></footer></main>
 <aside class="calc-panel" id="calculatorPanel" aria-label="Scientific calculator" aria-labelledby="calcHeading">
  <div class="calc-header">
   <div><div class="calc-kicker">Exam tools · Keyboard-ready</div><h2 id="calcHeading">Scientific calculator</h2></div>
@@ -76,7 +76,7 @@
  <p class="calc-notes"><strong>Keyboard:</strong> Click the expression field, or press <kbd>Alt</kbd> + <kbd>C</kbd>. Type <kbd>+</kbd>, <kbd>-</kbd>, <kbd>*</kbd>, <kbd>/</kbd>, numbers and brackets normally. <kbd>Enter</kbd> calculates. <kbd>Backspace</kbd> edits. <strong>DEG</strong> is the default for trig functions.</p>
  <p class="calc-notes">This calculator does not submit questions or change your progress. Confirm permitted calculator use in your actual exam.</p>
 </aside>
-</div><button type="button" id="calcLauncher" class="calc-launcher" aria-expanded="false" aria-controls="calculatorPanel">▦ Calculator</button><div id="toast" role="status" aria-live="polite" class="toast hidden"></div><script src="./diagrams.js"></script><script>
+</div><button type="button" id="calcLauncher" class="calc-launcher" aria-expanded="false" aria-controls="calculatorPanel">▦ Calculator</button><div id="toast" role="status" aria-live="polite" class="toast hidden"></div><script src="./diagrams.js"></script><script src="./question-bank.js"></script><script>
 /* ENG1013 Exam Pilot — standalone adaptive study companion.
    All data remains in browser localStorage until exported by the user. */
 'use strict';
@@ -183,7 +183,7 @@ function num(id,prompt,expected,unit,explanation,hint,level=1,extra={}){
 }
 function mcq(id,prompt,answer,wrong,explanation,hint,level=1,code=''){let options=shuffle([...new Set([String(answer),...wrong.map(String)])]);if(options.length<3)options.push('None of these');return {topic:id,kind:'mcq',prompt,expected:String(answer),options,explanation,hint,level,code};}
 function codeq(id,prompt,code,answer,wrong,explanation,hint,level=1){return mcq(id,prompt,answer,wrong,explanation,hint,level,code);}
-function makeQuestion(id,level=1,avoidVariants=[]){
+function makeOriginalQuestion(id,level=1,avoidVariants=[]){
  const vi=pick([6,9,12,15,18,20,24]), r1=pick([2,3,4,5,6]), r2=pick([2,3,4,5,6,8]);
  switch(id){
  case 'E1':{
@@ -361,6 +361,9 @@ function makeQuestion(id,level=1,avoidVariants=[]){
  default:return mcq('S1','Which shape represents a decision?','Diamond',['Rectangle','Oval','Parallelogram'],'Use a diamond for Boolean decisions.','Think True/False.');
  }
 }
+function makeQuestion(id,level=1,avoidVariants=[]){
+ return pickExpandedQuestion(id,level,avoidVariants,makeOriginalQuestion);
+}
 function seed(){
  const progress={};for(const t of TOPICS)progress[t.id]={mastery:0,attempts:0,correct:0,streak:0,nextDue:null,lastReviewed:null,provisional:false};
  for(const [id,m] of [['E1',38],['E2',36],['E3',48],['E4',47]]){progress[id].mastery=m;progress[id].provisional=true;progress[id].nextDue='2026-11-08';}
@@ -421,11 +424,15 @@ function recommended(excludeId=null){
 function questionLevel(id){const p=state.progress[id];return p.mastery>=70?3:p.mastery>=35?2:1;}
 function questionSignature(q){return String(q.prompt||'')+'\u0000'+String(q.code||'');}
 function freshQuestion(id){
- const recent=state.history.filter(h=>h.topic===id).slice(-5);
- const seen=new Set(recent.map(questionSignature));
- const avoided=id==='S3'?recent.slice(-4).map(h=>h.variant||'independent-if'):[];
- let q=makeQuestion(id,questionLevel(id),avoided);
- for(let attempts=0;attempts<35&&seen.has(questionSignature(q));attempts++)q=makeQuestion(id,questionLevel(id),avoided);
+ if(!state.questionShown||typeof state.questionShown!=='object')state.questionShown={};
+ const attempts=state.history.filter(h=>h.topic===id).slice(-6);
+ const shown=(state.questionShown[id]||[]).slice(-8);
+ const seen=new Set([...attempts.map(questionSignature),...shown.map(x=>x.signature)]);
+ const oldVariants=attempts.slice(-2).map(h=>h.variant||generatedQuestionVariant(h));
+ const recentVariants=shown.length?shown.slice(-2).map(x=>x.variant):oldVariants;
+ let q=makeQuestion(id,questionLevel(id),recentVariants);
+ for(let tries=0;tries<45&&seen.has(questionSignature(q));tries++)q=makeQuestion(id,questionLevel(id),recentVariants);
+ state.questionShown[id]=[...shown,{signature:questionSignature(q),variant:q.variant}].slice(-12);
  return q;
 }
 function focusPracticeControl(){
@@ -453,14 +460,14 @@ function recordAttempt(q,ans,correct,hinted,source='practice'){
  const delta=correct?(hinted?8:Math.max(8,20-Math.floor(p.mastery/16))):(-8-Math.floor(p.mastery/25));
  p.mastery=Math.min(100,Math.max(0,p.mastery+delta));
  p.lastReviewed=presentDate();p.provisional=false;
- state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,variant:q.variant||null,explanation:q.explanation});
+ state.history.push({id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date:presentDate(),ts:Date.now(),topic:q.topic,prompt:q.prompt,code:q.code||'',answer:String(ans||''),expected:String(q.expected),unit:q.unit||'',correct,hinted,source,level:q.level,variant:q.variant||generatedQuestionVariant(q),explanation:q.explanation});
  if(state.history.length>1000)state.history=state.history.slice(-1000);
  const recent=state.history.filter(h=>h.topic===q.topic&&['practice','mock'].includes(h.source)).slice(-3);
  const distinct=new Set(recent.map(questionSignature)).size>=2;
- const diverseS3=q.topic!=='S3'||new Set(recent.map(h=>h.variant||'independent-if')).size>=3;
+ const diverseTopics=new Set(recent.map(h=>h.variant||generatedQuestionVariant(h))).size>=3;
  const needsIntermediate=['E5','E6','E8','E14','S9'].includes(q.topic);
  const hasIntermediate=!needsIntermediate||recent.some(h=>h.level>=2);
- const passed=p.independentStreak>=3&&recent.length===3&&distinct&&hasIntermediate&&diverseS3;
+ const passed=p.independentStreak>=3&&recent.length===3&&distinct&&hasIntermediate&&diverseTopics;
  if(wasComplete&&wasReview){
    if(independent){p.nextDue=dateAdd(presentDate(),3);p.independentStreak=0;}
    else{p.completedAt=null;p.nextDue=dateAdd(presentDate(),1);}
