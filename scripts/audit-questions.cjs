@@ -5,12 +5,13 @@ const fs=require('node:fs'),vm=require('node:vm'),cp=require('node:child_process
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const bank=fs.readFileSync(path.join(root,'question-bank.js'),'utf8');
+const speed=fs.readFileSync(path.join(root,'speed-rankings.js'),'utf8');
 const main=html.match(/<script>\s*\/\* ENG1013 Exam Pilot([\s\S]*?)<\/script>/);
 if(!main)throw Error('Cannot locate main study engine script');
 const stub={innerHTML:'',textContent:'',style:{},classList:{add(){},remove(){}},addEventListener(){},focus(){},value:''};
 const context={document:{getElementById(){return {...stub}},addEventListener(){},querySelector(){return {...stub}}},window:{addEventListener(){},scrollTo(){}},localStorage:{getItem(){return null},setItem(){}},location:{hash:'#dashboard'},history:{replaceState(){}},navigator:{},setInterval(){},setTimeout(){},clearTimeout(){},requestAnimationFrame(fn){fn()},console,Date,Intl};
 vm.createContext(context);
-vm.runInContext(bank+'\n'+main[0].slice(8,-9),context,{timeout:15000});
+vm.runInContext(bank+'\n'+speed+'\n'+main[0].slice(8,-9),context,{timeout:15000});
 const run=code=>vm.runInContext(code,context,{timeout:15000});
 const topics=run('TOPICS.map(x=>x.id)');
 const errors=[],counts={};
