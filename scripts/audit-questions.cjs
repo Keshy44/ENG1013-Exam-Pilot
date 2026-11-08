@@ -15,6 +15,64 @@ const run=code=>vm.runInContext(code,context,{timeout:15000});
 const topics=run('TOPICS.map(x=>x.id)');
 const errors=[],counts={};
 let pythonExecutions=0,numericChecks=0,questionsChecked=0;
+
+function independentlyCalculate(q){
+ const s=q.prompt;let m;
+ switch(q.topic){
+ case 'E1':
+  if(m=s.match(/resistor of ([\d.]+) Ω has ([\d.]+) V/))return +m[2]/m[1];
+  if(m=s.match(/resistor has ([\d.]+) V across it and carries ([\d.]+) A/))return +m[1]/m[2];
+  if(m=s.match(/resistor experiences ([\d.]+) V and ([\d.]+) A/))return m[1]*m[2];
+  break;
+ case 'E2':
+  if(m=s.match(/Resistors of ([\d.]+) Ω and ([\d.]+) Ω are connected in (SERIES|PARALLEL)/))return m[3]==='SERIES'?+m[1]+(+m[2]):m[1]*m[2]/(+m[1]+(+m[2]));
+  break;
+ case 'E3':
+  if(m=s.match(/Vs = ([\d.]+) V, Rtop = ([\d.]+) kΩ and Rbottom = ([\d.]+) kΩ/))return m[1]*m[3]/(+m[2]+(+m[3]));
+  if(m=s.match(/Two resistors ([\d.]+) kΩ and ([\d.]+) kΩ are in series across ([\d.]+) V/))return m[3]/(+m[1]+(+m[2]));
+  break;
+ case 'E4':
+  if(m=s.match(/KCL: ([\d.]+) mA enters a node\. ([\d.]+) mA and ([\d.]+) mA leave/))return +m[1]-m[2]-m[3];
+  if(m=s.match(/KVL: a ([\d.]+) V source drives a loop with drops of ([\d.]+) V, ([\d.]+) V/))return +m[1]-m[2]-m[3];
+  break;
+ case 'E5':
+  if(m=s.match(/a ([\d.]+) V source connects through ([\d.]+) kΩ to VA; ([\d.]+) kΩ connects VA to VB; ([\d.]+) kΩ connects VB to ground/))return m[1]*m[4]/(+m[2]+(+m[3])+(+m[4]));
+  if(m=s.match(/Unknown node V connects to ([\d.]+) V through ([\d.]+) kΩ and to ground through ([\d.]+) kΩ/)){
+   const injection=Number((s.match(/A ([\d.]+) mA current source also injects/)||[])[1]||0);
+   return (m[1]/m[2]+injection)/(1/m[2]+1/m[3]);
+  }
+  break;
+ case 'E6':
+  if(m=s.match(/Node V has a ([\d.]+) V source through ([\d.]+) kΩ, a ([\d.]+) kΩ path to ground and a ([\d.]+) mA source/))return (m[1]/m[2]+(+m[4]))/(1/m[2]+1/m[3]);
+  break;
+ case 'E8':
+  if(m=s.match(/A ([\d.]+) V source feeds Rtop=([\d.]+) kΩ in series with Rbottom=([\d.]+) kΩ/))return m[1]*m[3]/(+m[2]+(+m[3]));
+  if(m=s.match(/Rtop=([\d.]+) kΩ from a voltage source.*Rbottom=([\d.]+) kΩ/))return m[1]*m[2]/(+m[1]+(+m[2]));
+  if(m=s.match(/Vth=([\d.]+) V and Rth=([\d.]+) kΩ/))return m[1]/m[2];
+  break;
+ case 'E9':
+  if(m=s.match(/([\d.]+) V supplies ([\d.]+) forward-biased LED.*each dropping ([\d.]+) V, through a ([\d.]+) Ω resistor/))return 1000*(m[1]-m[2]*m[3])/m[4];
+  break;
+ case 'E12':
+  if(m=s.match(/([\d.]+) µF and ([\d.]+) µF capacitors are connected in (PARALLEL|SERIES)/))return m[3]==='PARALLEL'?+m[1]+(+m[2]):m[1]*m[2]/(+m[1]+(+m[2]));
+  break;
+ case 'E13':
+  if(m=s.match(/A ([\d.]+) µF capacitor has ([\d.]+) V across it/))return m[1]*m[2];
+  if(m=s.match(/Voltage across a ([\d.]+) µF capacitor increases linearly by ([\d.]+) V in ([\d.]+) ms/))return m[1]*m[2]/m[3];
+  break;
+ case 'E14':
+  if(m=s.match(/R=([\d.]+) kΩ and C=([\d.]+) µF/))return m[1]*m[2];
+  if(m=s.match(/charges toward ([\d.]+) V\. What is Vc after ([\d.]+) time constant/))return m[1]*(1-Math.exp(-m[2]));
+  break;
+ case 'M2':
+  if(m=s.match(/n=([\d.]+)×10²¹ m⁻³, electron mobility=([\d.]+) m²/))return m[1]*1e21*1.6e-19*m[2];
+  if(m=s.match(/conductivity σ = ([\d.]+) S\/m/))return 1/m[1];
+  if(m=s.match(/wavelength ([\d.]+) nm/))return 1240/m[1];
+  break;
+ }
+ return null;
+}
+
 for(const id of topics){
  const seen=new Set(),families={};
  for(let j=0;j<180;j++){
@@ -42,6 +100,12 @@ for(const id of topics){
    numericChecks++;
    if(!Number.isFinite(q.expected))errors.push(id+' non-finite numeric answer: '+q.prompt);
    if(!run('grade('+JSON.stringify(q)+','+JSON.stringify(String(q.expected))+')'))errors.push(id+' numeric answer marked wrong: '+q.prompt);
+   const independent=independentlyCalculate(q);
+   if(independent!==null){
+    const precision=Number.isInteger(q.precision)?q.precision:1;
+    const allowance=0.5*Math.pow(10,-precision)+1e-7;
+    if(Math.abs(q.expected-independent)>allowance)errors.push(id+' numerical KEY disagrees with independent calculation: expected '+q.expected+', computed '+independent+' from '+q.prompt);
+   }
   }else errors.push(id+' unknown question kind: '+q.kind);
  }
  counts[id]={distinct:seen.size,families:Object.keys(families).length};
