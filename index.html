@@ -76,7 +76,7 @@
  <p class="calc-notes"><strong>Keyboard:</strong> Click the expression field, or press <kbd>Alt</kbd> + <kbd>C</kbd>. Type <kbd>+</kbd>, <kbd>-</kbd>, <kbd>*</kbd>, <kbd>/</kbd>, numbers and brackets normally. <kbd>Enter</kbd> calculates. <kbd>Backspace</kbd> edits. <strong>DEG</strong> is the default for trig functions.</p>
  <p class="calc-notes">This calculator does not submit questions or change your progress. Confirm permitted calculator use in your actual exam.</p>
 </aside>
-</div><button type="button" id="calcLauncher" class="calc-launcher" aria-expanded="false" aria-controls="calculatorPanel">▦ Calculator</button><div id="speedPauseOverlay" class="speed-pause-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="speedPauseTitle"><div class="speed-pause-dialog"><span class="speed-pause-icon">⏸</span><h2 id="speedPauseTitle">Study timer paused</h2><p id="speedPauseReason">No activity detected.</p><p>Your question and answer are unchanged. The timer remains paused until you choose to continue.</p><button type="button" class="btn primary" data-action="resumeTimer">I'm back — resume studying</button><p class="tiny muted">Only timed practice is paused. A full mock exam still uses its normal countdown.</p></div></div><div id="toast" role="status" aria-live="polite" class="toast hidden"></div><script src="./diagrams.js"></script><script src="./question-bank.js"></script><script src="./speed-rankings.js"></script><script>
+</div><button type="button" id="calcLauncher" class="calc-launcher" aria-expanded="false" aria-controls="calculatorPanel">▦ Calculator</button><div id="speedPauseOverlay" class="speed-pause-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="speedPauseTitle"><div class="speed-pause-dialog"><span class="speed-pause-icon">⏸</span><h2 id="speedPauseTitle">Study timer paused</h2><p id="speedPauseReason">No activity detected.</p><p>Your question and answer are unchanged. Choose how to handle the idle period:</p><button type="button" class="btn primary" data-action="resumeTimer">I was away — exclude idle time &amp; resume</button><button type="button" id="speedKeepTime" class="btn" data-action="resumeWorking">I was still solving — count the time</button><p class="tiny muted">If you were away, only the first 15 seconds of inactivity count. Switching tabs pauses immediately. Full mock exams keep their normal countdown.</p></div></div><div id="toast" role="status" aria-live="polite" class="toast hidden"></div><script src="./diagrams.js"></script><script src="./question-bank.js"></script><script src="./speed-rankings.js"></script><script>
 /* ENG1013 Exam Pilot — standalone adaptive study companion.
    All data remains in browser localStorage until exported by the user. */
 'use strict';
@@ -382,6 +382,7 @@ let route=(location.hash||'#dashboard').replace('#','');if(!VIEWS.some(v=>v[0]==
 let practice={topic:null,q:null,answer:'',hint:false,marked:false,correct:false,forReview:false,newAward:null,elapsedSeconds:null};
 let speedClock=null;
 const IDLE_AFTER_MS=90000;
+const IDLE_GRACE_MS=15000;
 let filter='all',topicFilter='all',topicSearch='',activeLesson=null,toastTimer=null;
 function save(){state.lastSaved=Date.now();try{localStorage.setItem(STORE,JSON.stringify(state));}catch{toast('Could not save locally. Export your progress now.');}}
 function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.add('hidden'),4400);}
@@ -439,7 +440,7 @@ function freshQuestion(id){
  return q;
 }
 function speedStartClock(){
- speedClock={question:practice.q,elapsedMs:0,resumedAt:Date.now(),lastActivity:Date.now(),paused:null,stopped:false};
+ speedClock={question:practice.q,elapsedMs:0,resumedAt:Date.now(),lastActivity:Date.now(),paused:null,pausedAt:null,stopped:false};
  if(document.visibilityState==='hidden')speedPauseClock('tab');
 }
 function speedElapsedMs(){
@@ -451,14 +452,27 @@ function speedPauseClock(reason){
  speedClock.elapsedMs=speedElapsedMs();
  speedClock.resumedAt=null;
  speedClock.paused=reason;
+ speedClock.pausedAt=Date.now();
  speedUpdateTimer();
 }
-function speedResumeClock(){
+function speedResumeClock(choice='away'){
  if(!speedClock||!speedClock.paused||route!=='practice'||practice.marked)return;
  if(document.visibilityState==='hidden')return;
+ const now=Date.now();
+ if(speedClock.paused==='idle'){
+  if(choice==='working'){
+   // The learner was still thinking or solving: count all time until their response.
+   speedClock.elapsedMs+=Math.max(0,now-speedClock.pausedAt);
+  }else{
+   // The learner was away: count 15 seconds of the inactivity, not the entire gap.
+   const idleBeforePause=Math.max(0,speedClock.pausedAt-speedClock.lastActivity);
+   speedClock.elapsedMs=Math.max(0,speedClock.elapsedMs-Math.max(0,idleBeforePause-IDLE_GRACE_MS));
+  }
+ }
  speedClock.paused=null;
- speedClock.resumedAt=Date.now();
- speedClock.lastActivity=Date.now();
+ speedClock.pausedAt=null;
+ speedClock.resumedAt=now;
+ speedClock.lastActivity=now;
  speedUpdateTimer();
 }
 function speedEndClock(){
@@ -485,7 +499,9 @@ function speedUpdateTimer(){
  if(show){
   overlay.classList.remove('hidden');
   const reason=document.getElementById('speedPauseReason');
-  if(reason)reason.textContent=speedClock.paused==='idle'?'No keyboard, mouse or touch activity for 90 seconds.':speedClock.paused==='tab'?'You switched away from the study tab.':'You left the practice screen.';
+  if(reason)reason.textContent=speedClock.paused==='idle'?'No keyboard, mouse or touch activity for 90 seconds. Were you away, or still solving?':speedClock.paused==='tab'?'You switched away from the study tab.':'You left the practice screen.';
+  const keep=document.getElementById('speedKeepTime');
+  if(keep){if(speedClock.paused==='idle')keep.classList.remove('hidden');else keep.classList.add('hidden');}
  }else overlay.classList.add('hidden');
 }
 function speedTick(){
@@ -496,8 +512,10 @@ function speedTick(){
  speedUpdateTimer();
 }
 function speedActivity(){
- if(speedClock&&!speedClock.stopped&&!speedClock.paused&&route==='practice'&&!practice.marked)
+ if(speedClock&&!speedClock.stopped&&!speedClock.paused&&route==='practice'&&!practice.marked){
+  if(Date.now()-speedClock.lastActivity>=IDLE_AFTER_MS){speedPauseClock('idle');return;}
   speedClock.lastActivity=Date.now();
+ }
 }
 
 function focusPracticeControl(){
@@ -650,7 +668,7 @@ function exportBackup(){const json=JSON.stringify(state,null,2),blob=new Blob([j
 function safeImport(text){let data;try{data=JSON.parse(text);}catch{return 'Invalid JSON file.';}if(!data||data.version!==1||!data.progress||typeof data.progress!=='object'||!Array.isArray(data.history)||!Array.isArray(data.sessions))return 'Not a valid ENG1013 Exam Pilot backup.';if(!TOPICS.every(t=>data.progress[t.id]&&typeof data.progress[t.id].mastery==='number'))return 'Backup is missing required topic progress.';if(!confirm('Replace all current website progress with this backup? Export your current progress first if you want to keep it.'))return 'Import cancelled.';state=data;if(!state.speedRecords||typeof state.speedRecords!=='object')state.speedRecords={};speedClock=null;save();practice={topic:null,q:null,answer:'',hint:false,marked:false,correct:false,newAward:null,elapsedSeconds:null};navigate('dashboard');return null;}
 function resetProgress(){if(!confirm('Reset all website practice, exam mocks and time logs? This cannot be undone unless you exported a backup.'))return;if(!confirm('Final confirmation: erase website progress and restore only the original diagnostic/checkpoint baseline?'))return;state=seed();speedClock=null;save();practice={topic:null,q:null,answer:'',hint:false,marked:false,correct:false,newAward:null,elapsedSeconds:null};navigate('dashboard');toast('Website progress reset to original baseline.');}
 function onClick(e){const el=e.target.closest('[data-nav],[data-action]');if(!el)return;const nav=el.dataset.nav;if(nav){navigate(nav);return;}const a=el.dataset.action;const id=el.dataset.topic;
- switch(a){case 'resumeTimer':speedResumeClock();focusPracticeControl();break;case 'adaptive':useNext();break;case 'start':beginPractice(id);break;case 'lesson':activeLesson=id;navigate('topics');setTimeout(()=>document.getElementById('lessonDetail')?.scrollIntoView({behavior:'smooth',block:'start'}),80);break;case 'topicFilter':topicFilter=el.dataset.filter;render();break;case 'choose':if(!practice.marked){practice.answer=el.dataset.choice;render();requestAnimationFrame(()=>document.querySelector('[data-action="mark"]')?.focus({preventScroll:true}));}break;case 'hint':practice.hint=true;render();break;case 'mark':if(practice.q?.kind==='numeric')practice.answer=document.getElementById('numericAnswer')?.value||practice.answer;submitPractice();break;case 'skip':skipQuestion();break;case 'nextQuestion':beginPractice(practice.topic);break;case 'chatQuestion':if(!practice.marked)practice.hint=true;chatTransfer('question');render();break;case 'topicTutor':chatTransfer('topic',id);break;case 'toggleDeferred':if(state.deferredOverrides.includes(id))state.deferredOverrides=state.deferredOverrides.filter(x=>x!==id);else state.deferredOverrides.push(id);save();render();break;case 'logMinutes':{const n=Number(document.getElementById('studyMinutes')?.value);if(!Number.isInteger(n)||n<1||n>240){toast('Enter a valid study duration (1–240 minutes).');break;}state.sessions.push({date:presentDate(),minutes:n,ts:Date.now()});save();render();toast(`${n} focused study minutes logged.`);break;}case 'startMock':newMock();break;case 'finishMock':finishMock();break;case 'save':save();toast('Answers saved to this browser.');break;case 'explainHistory':chatTransfer('history',el.dataset.history);break;case 'shareReport':chatTransfer('report');break;case 'export':exportBackup();break;case 'reset':resetProgress();break;}}
+ switch(a){case 'resumeTimer':speedResumeClock('away');focusPracticeControl();break;case 'resumeWorking':speedResumeClock('working');focusPracticeControl();break;case 'adaptive':useNext();break;case 'start':beginPractice(id);break;case 'lesson':activeLesson=id;navigate('topics');setTimeout(()=>document.getElementById('lessonDetail')?.scrollIntoView({behavior:'smooth',block:'start'}),80);break;case 'topicFilter':topicFilter=el.dataset.filter;render();break;case 'choose':if(!practice.marked){practice.answer=el.dataset.choice;render();requestAnimationFrame(()=>document.querySelector('[data-action="mark"]')?.focus({preventScroll:true}));}break;case 'hint':practice.hint=true;render();break;case 'mark':if(practice.q?.kind==='numeric')practice.answer=document.getElementById('numericAnswer')?.value||practice.answer;submitPractice();break;case 'skip':skipQuestion();break;case 'nextQuestion':beginPractice(practice.topic);break;case 'chatQuestion':if(!practice.marked)practice.hint=true;chatTransfer('question');render();break;case 'topicTutor':chatTransfer('topic',id);break;case 'toggleDeferred':if(state.deferredOverrides.includes(id))state.deferredOverrides=state.deferredOverrides.filter(x=>x!==id);else state.deferredOverrides.push(id);save();render();break;case 'logMinutes':{const n=Number(document.getElementById('studyMinutes')?.value);if(!Number.isInteger(n)||n<1||n>240){toast('Enter a valid study duration (1–240 minutes).');break;}state.sessions.push({date:presentDate(),minutes:n,ts:Date.now()});save();render();toast(`${n} focused study minutes logged.`);break;}case 'startMock':newMock();break;case 'finishMock':finishMock();break;case 'save':save();toast('Answers saved to this browser.');break;case 'explainHistory':chatTransfer('history',el.dataset.history);break;case 'shareReport':chatTransfer('report');break;case 'export':exportBackup();break;case 'reset':resetProgress();break;}}
 document.addEventListener('click',onClick);
 document.addEventListener('mousemove',speedActivity,{passive:true});
 document.addEventListener('pointerdown',speedActivity,{passive:true});
