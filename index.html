@@ -76,7 +76,7 @@
  <p class="calc-notes"><strong>Keyboard:</strong> Click the expression field, or press <kbd>Alt</kbd> + <kbd>C</kbd>. Type <kbd>+</kbd>, <kbd>-</kbd>, <kbd>*</kbd>, <kbd>/</kbd>, numbers and brackets normally. <kbd>Enter</kbd> calculates. <kbd>Backspace</kbd> edits. <strong>DEG</strong> is the default for trig functions.</p>
  <p class="calc-notes">This calculator does not submit questions or change your progress. Confirm permitted calculator use in your actual exam.</p>
 </aside>
-</div><button type="button" id="calcLauncher" class="calc-launcher" aria-expanded="false" aria-controls="calculatorPanel">▦ Calculator</button><div id="speedPauseOverlay" class="speed-pause-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="speedPauseTitle"><div class="speed-pause-dialog"><span class="speed-pause-icon">⏸</span><h2 id="speedPauseTitle">Study timer paused</h2><p id="speedPauseReason">No activity detected.</p><p>Your question and answer are unchanged. Choose how to handle the idle period:</p><button type="button" class="btn primary" data-action="resumeTimer">I was away — exclude idle time &amp; resume</button><button type="button" id="speedKeepTime" class="btn" data-action="resumeWorking">I was still solving — count the time</button><p class="tiny muted">If you were away, only the first 15 seconds of inactivity count. Switching tabs pauses immediately. Full mock exams keep their normal countdown.</p></div></div><div id="toast" role="status" aria-live="polite" class="toast hidden"></div><script src="./diagrams.js"></script><script src="./exam-circuits.js"></script><script src="./question-bank.js"></script><script src="./separator-bank.js"></script><script src="./speed-rankings.js"></script><script>
+</div><button type="button" id="calcLauncher" class="calc-launcher" aria-expanded="false" aria-controls="calculatorPanel">▦ Calculator</button><div id="speedPauseOverlay" class="speed-pause-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="speedPauseTitle"><div class="speed-pause-dialog"><span class="speed-pause-icon">⏸</span><h2 id="speedPauseTitle">Study timer paused</h2><p id="speedPauseReason">No activity detected.</p><p>Your question and answer are unchanged. Choose how to handle the idle period:</p><button type="button" class="btn primary" data-action="resumeTimer">I was away — exclude idle time &amp; resume</button><button type="button" id="speedKeepTime" class="btn" data-action="resumeWorking">I was still solving — count the time</button><p class="tiny muted">If you were away, only the first 15 seconds of inactivity count. Switching tabs pauses immediately. Full mock exams keep their normal countdown.</p></div></div><div id="toast" role="status" aria-live="polite" class="toast hidden"></div><script src="./diagrams.js?v=20261112b"></script><script src="./exam-circuits.js?v=20261112b"></script><script src="./question-bank.js?v=20261112b"></script><script src="./separator-bank.js?v=20261112b"></script><script src="./speed-rankings.js?v=20261112b"></script><script>
 /* ENG1013 Exam Pilot — standalone adaptive study companion.
    All data remains in browser localStorage until exported by the user. */
 'use strict';
@@ -381,7 +381,16 @@ for(const t of TOPICS){
  if(!Number.isInteger(p.independentStreak))p.independentStreak=0;
  if(!('completedAt' in p))p.completedAt=(p.mastery>=85&&p.streak>=3)?(p.lastReviewed||presentDate()):null;
 }
-const initialBackfill=speedBackfillHistorical(state,TMAP);
+let initialBackfill={estimated:0,awards:0,pace:null};
+try{
+ if(typeof speedBackfillHistorical==='function'){
+  initialBackfill=speedBackfillHistorical(state,TMAP);
+ }else{
+  console.warn('Historical ranking helper did not load; keeping existing progress unchanged.');
+ }
+}catch(migrationError){
+ console.error('Could not recalculate historic rankings; existing data was not reset.',migrationError);
+}
 let route=(location.hash||'#dashboard').replace('#','');if(!VIEWS.some(v=>v[0]===route))route='dashboard';
 let practice={topic:null,q:null,answer:'',hint:false,marked:false,correct:false,forReview:false,newAward:null,elapsedSeconds:null};
 let speedClock=null;
@@ -826,6 +835,26 @@ document.addEventListener('change',e=>{if(e.target.dataset.mockRadio!==undefined
 document.getElementById('chatButtonTop').addEventListener('click',()=>chatTransfer('report'));
 window.addEventListener('hashchange',()=>{let h=location.hash.replace('#','');if(VIEWS.some(x=>x[0]===h)){route=h;render();}});
 setInterval(()=>{if(route==='mock'&&state.mock&&!state.mock.finished){const left=mockRemaining(),clock=document.getElementById('mockClock');if(clock)clock.textContent=fmtClock(left);if(left===0){toast('Mock time is up. Answers are being marked.');finishMock(true);}}},1000);
-render();
+try{
+ render();
+}catch(startupError){
+ console.error('ENG1013 startup display error:',startupError);
+ const view=document.getElementById('view');
+ if(view){
+  const message=String(startupError?.message||startupError);
+  view.innerHTML='<div class="card"><h2>Study data is still on this browser</h2>'+
+   '<p>The interface could not finish loading. Your existing progress has not been reset.</p>'+
+   '<p class="alert" role="alert">'+esc(message)+'</p>'+
+   '<p>Refresh using Ctrl + Shift + R. If this message remains, copy the error and provide it to ChatGPT so the website can be repaired without resetting saved work.</p>'+
+   '<button type="button" class="btn primary" id="saveEmergencyBackup">Download emergency data backup</button></div>';
+  document.getElementById('saveEmergencyBackup')?.addEventListener('click',()=>{
+   const raw=localStorage.getItem(STORE);
+   if(!raw){alert('No saved browser progress found for this domain.');return;}
+   const blob=new Blob([raw],{type:'application/json'}),link=document.createElement('a');
+   link.href=URL.createObjectURL(blob);link.download='eng1013-emergency-progress.json';
+   document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),1000);
+  });
+ }
+}
 
-</script><script src="./calculator.js"></script></body></html>
+</script><script src="./calculator.js?v=20261112b"></script></body></html>
