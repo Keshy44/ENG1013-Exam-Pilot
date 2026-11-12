@@ -144,7 +144,7 @@ function separatorQuestion(id,avoidVariants=[]){
   const A=r([5,6,7]),B=r([2,3,4]),val=A*B-Math.floor(A/B)+(A%B);
   m("mixed-precedence","Evaluate the exact Python printed value.",val,[A*B,val+A,val-1],`Product ${A*B}; floor division ${Math.floor(A/B)}; remainder ${A%B}; total ${val}.`,"Calculate * // % before addition/subtraction.",`a = ${A}\nb = ${B}\nprint(a * b - a // b + a % b)`);
   const N=r([10,11,14,15]),D=r([3,4]),floor=Math.floor(-N/D),mod=-N-floor*D;
-  m("negative-floor",`Give BOTH printed lines in order as 'first then second'.`,`${floor} then ${mod}`,[`${Math.trunc(-N/D)} then ${mod}`,`${floor} then ${-mod}`,`${Math.round(-N/D)} then ${mod}`],`Python floor division is toward negative infinity: -${N}//${D}=${floor}; -${N}%${D}=${mod}.`,"Negative floor division does not truncate toward zero.",`print(-${N} // ${D})\nprint(-${N} % ${D})`);
+  m("negative-floor",`Give BOTH printed lines in order as 'first then second'.`,`${floor} then ${mod}`,[`${Math.trunc(-N/D)} then ${mod}`,`${floor} then ${-mod}`,`${Math.round(-N/D)} then ${mod}`,"SyntaxError","0 then 0"],`Python floor division is toward negative infinity: -${N}//${D}=${floor}; -${N}%${D}=${mod}.`,"Negative floor division does not truncate toward zero.",`print(-${N} // ${D})\nprint(-${N} % ${D})`);
   break;}
  case 'S3':{
   const x=r([8,10,12]),y=r([3,4,5]);let val=x;if(val>9)val-=y;if(val>=5)val*=2;else val+=10;
