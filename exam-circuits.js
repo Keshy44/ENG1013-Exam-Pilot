@@ -12,7 +12,7 @@ function diagramParts(){
  vR:(x,y,Y,label,side="right")=>{const mid=(y+Y)/2,h=Math.min(65,Y-y-25);return f.line(x,y,x,mid-h/2)+`<rect x="${x-12}" y="${mid-h/2}" width="24" height="${h}" fill="#fff" stroke="#192330" stroke-width="2.4"/>`+f.line(x,mid+h/2,x,Y)+f.text(x+(side==="right"?24:-24),mid+4,label,true,side==="right"?"start":"end");},
  hC:(x,y,X,label)=>{const m=(x+X)/2;return f.line(x,y,m-9,y)+f.line(m-9,y-18,m-9,y+18)+f.line(m+9,y-18,m+9,y+18)+f.line(m+9,y,X,y)+f.text(m,y-27,label,true);},
  vC:(x,y,Y,label)=>{const m=(y+Y)/2;return f.line(x,y,x,m-9)+f.line(x-19,m-9,x+19,m-9)+f.line(x-19,m+9,x+19,m+9)+f.line(x,m+9,x,Y)+f.text(x+24,m+4,label,true,"start");},
- vs:(x,y,Y,label)=>{const m=(y+Y)/2;return f.line(x,y,x,m-26)+`<circle cx="${x}" cy="${m}" r="26" fill="white" stroke="#192330" stroke-width="2.4"/>`+f.line(x,m+26,x,Y)+f.text(x,m-6,"+",false)+f.text(x,m+15,"−",false)+f.text(x-18,m-39,label,true,"end");},
+ vs:(x,y,Y,label,reverse=false)=>{const m=(y+Y)/2;return f.line(x,y,x,m-26)+`<circle cx="${x}" cy="${m}" r="26" fill="white" stroke="#192330" stroke-width="2.4"/>`+f.line(x,m+26,x,Y)+f.text(x,m-6,reverse?"−":"+",false)+f.text(x,m+15,reverse?"+":"−",false)+f.text(x-18,m-39,label,true,"end");},
  is:(x,y,Y,label,up=true,dep=false)=>{const m=(y+Y)/2,c=dep?`<path d="M${x} ${m-29} L${x+27} ${m} L${x} ${m+29} L${x-27} ${m} Z" fill="white" stroke="#192330" stroke-width="2.4"/>`:`<circle cx="${x}" cy="${m}" r="26" fill="white" stroke="#192330" stroke-width="2.4"/>`;const a=up?m+12:m-12,b=up?m-12:m+12;return f.line(x,y,x,m-29)+c+f.line(x,m+29,x,Y)+f.line(x,a,x,b)+`<path d="M${x-7} ${b+(up?8:-8)} L${x} ${b} L${x+7} ${b+(up?8:-8)}" fill="none" stroke="#192330" stroke-width="2.2"/>`+f.text(x+39,m-9,label,true,"start");},
  diode:(x,y,X,label)=>{const m=(x+X)/2;return f.line(x,y,m-20,y)+`<path d="M${m-20} ${y-18} L${m+13} ${y} L${m-20} ${y+18} Z" stroke="#192330" fill="white" stroke-width="2.1"/>`+f.line(m+17,y-21,m+17,y+21)+f.line(m+17,y,X,y)+f.line(m+5,y-22,m+20,y-38)+`<path d="M${m+11} ${y-36} L${m+20} ${y-38} L${m+18} ${y-29}" fill="none" stroke="#192330" stroke-width="1.6"/>`+f.text(m,y-51,label,true);},
  arrow:(x,y,X,Y,label)=>{const ang=Math.atan2(Y-y,X-x),a=9;return f.line(x,y,X,Y)+`<path d="M${X-a*Math.cos(ang-.47)} ${Y-a*Math.sin(ang-.47)} L${X} ${Y} L${X-a*Math.cos(ang+.47)} ${Y-a*Math.sin(ang+.47)}" fill="none" stroke="#192330" stroke-width="2"/>`+(label?f.text((x+X)/2,(y+Y)/2-10,label,true):"");},
@@ -55,7 +55,7 @@ function advancedCircuitDiagram(q){
    b=N(390,160,'J1')+L(120,160,390,160)+L(390,160,690,160)+L(390,55,390,265)+A(160,145,330,145,'I1 = '+ent+' mA')+A(430,145,570,145,'Ix ?')+A(405,115,405,70,'I2 = '+a+' mA')+A(405,195,405,235,'I3 = '+c+' mA');title="Kirchhoff current law";caption="Current arrows define the signs; Ix points out of the junction";
   }else{m=parseNum(p,/there is a (\d+) V rise, an OPPOSING (\d+) V source drop, and a resistor drop of (\d+) V/);if(!m)return '';
    const [v1,v2,vr]=m;
-   b=VS(135,70,260,'V1 = '+v1+' V')+L(135,70,190,70)+HR(190,70,325,'R1 · '+vr+' V drop')+L(325,70,390,70)+HR(390,70,520,'R2 · Vx drop')+L(520,70,650,70)+VS(650,70,260,'V2 = '+v2+' V (opposes)')+L(135,260,650,260)+A(320,230,455,230,'KVL loop');title="Kirchhoff voltage law";caption="Two opposing voltage sources and the labelled resistor drops";
+   b=VS(135,70,260,'V1 = '+v1+' V')+L(135,70,190,70)+HR(190,70,325,'R1 · '+vr+' V drop')+L(325,70,390,70)+HR(390,70,520,'R2 · Vx drop')+L(520,70,650,70)+VS(650,70,260,'V2 = '+v2+' V (opposes)',true)+L(135,260,650,260)+A(320,230,455,230,'KVL loop');title="Kirchhoff voltage law";caption="Two opposing voltage sources and the labelled resistor drops";
   }
  }else if(q.topic==='E5'){
   m=parseNum(p,/TWO-NODE circuit: (\d+) V source through (\d+) kΩ to VA; (\d+) kΩ VA→ground; (\d+) kΩ VA↔VB; (\d+) kΩ VB→ground; (\d+) mA source/);
@@ -63,8 +63,8 @@ function advancedCircuitDiagram(q){
   b=VS(105,75,260,'V1 = '+vs+' V')+L(105,75,140,75)+HR(140,75,270,'R1 = '+ra+' kΩ')+L(270,75,350,75)+HR(375,75,510,'R3 = '+rm+' kΩ')+L(350,75,375,75)+L(510,75,555,75)+VR(350,75,260,'R2 = '+rg+' kΩ','left')+VR(555,75,260,'R4 = '+rb+' kΩ','left')+L(555,75,690,75)+IS(690,110,260,'I1 = '+inj+' mA',true)+L(690,75,690,110)+L(105,260,690,260)+G(555,260)+N(350,75,'VA')+N(555,75,'VB');
   title="Two-node nodal analysis";caption="Two unknown node voltages, four resistors and a current source entering VB";
  }else if(q.topic==='E6'){
-  m=parseNum(p,/A (\d+) V source connects through (\d+) kΩ to node V; (\d+) kΩ connects V to ground; a ([\d.]+) mA independent source (INJECTS into V from ground|DRAWS current OUT OF V to ground)/);
-  if(!m)return '';const [vs,ra,rb,i]=m,up=m[5].startsWith('INJECTS');
+  m=p.match(/A (\d+) V source connects through (\d+) kΩ to node V; (\d+) kΩ connects V to ground; a ([\d.]+) mA independent source (INJECTS into V from ground|DRAWS current OUT OF V to ground)/);
+  if(!m)return '';const [vs,ra,rb,i]=m.slice(1,5).map(Number),up=m[5].startsWith('INJECTS');
   b=VS(105,75,260,'V1 = '+vs+' V')+L(105,75,160,75)+HR(160,75,315,'R1 = '+ra+' kΩ')+L(315,75,440,75)+VR(440,75,260,'R2 = '+rb+' kΩ')+L(440,75,670,75)+L(670,75,670,110)+IS(670,110,260,'I1 = '+i+' mA',up)+L(105,260,670,260)+G(440,260)+N(440,75,'V')+(up?'':T(670,308,'Source extracts current',true));
   title="Superposition with signed current";caption=`The independent current source points ${up?'towards':'away from'} node V`;
  }else if(q.topic==='E7'){
