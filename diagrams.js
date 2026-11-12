@@ -2,6 +2,8 @@
 /* ENG1013 circuit diagrams. Rendered as responsive SVG, generated from each question's actual inputs.
    Circuit figures show givens and unknowns, never calculated answers. */
 function circuitDiagram(q){
+ // Hard questions specify new topologies in prose; don't show a generic diagram that may be wrong.
+ if(q?.separator)return '';
  if(!q||!q.prompt||!/^E(?:1|2|3|4|5|6|8|9|11|12|13|14)$/.test(q.topic))return '';
  const p=q.prompt, t=q.topic, ink='#aac4d6',aqua='#4bd7d5',white='#edf7ff',muted='#9db6c7';
  const L=(x,y,u,v,c=ink)=>'<line x1="'+x+'" y1="'+y+'" x2="'+u+'" y2="'+v+'" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round"/>';
