@@ -150,7 +150,7 @@ function separatorQuestion(id,avoidVariants=[]){
   const x=r([8,10,12]),y=r([3,4,5]);let val=x;if(val>9)val-=y;if(val>=5)val*=2;else val+=10;
   m("two-independent-ifs","What is printed after BOTH if statements execute?",val,[x,x*2,x-y],`First if may modify x, then the second if tests the updated x. Result=${val}.`,"The else belongs only to the second if.",`x = ${x}\ny = ${y}\nif x > 9:\n    x -= y\nif x >= 5:\n    x *= 2\nelse:\n    x += 10\nprint(x)`);
   const A=r([5,6,7]),B=r([3,4,5]),out=!((A>B)&&(B%2===0))||A===6;
-  m("boolean-precedence","What Boolean value prints?",String(out),[String(!out),"0","1"],`Compute comparisons and AND under NOT first; then OR. Result ${out}.`,"Follow parentheses and Boolean precedence.",`a = ${A}\nb = ${B}\nprint(not (a > b and b % 2 == 0) or a == 6)`);
+  m("boolean-precedence","What Boolean value prints?",out?'True':'False',[out?'False':'True',"0","1"],`Compute comparisons and AND under NOT first; then OR. Result ${out}.`,"Follow parentheses and Boolean precedence.",`a = ${A}\nb = ${B}\nprint(not (a > b and b % 2 == 0) or a == 6)`);
   break;}
  case 'S4':{
   const N=r([3,4,5]),M=r([4,5,6]);let sum=0;for(let i=1;i<=N;i++)for(let j=0;j<M;j++)if((i+j)%3!==0)sum+=i;
@@ -183,7 +183,7 @@ function separatorQuestion(id,avoidVariants=[]){
  case 'S9':{
   const K=r([3,4,5]),items=[1,2,K,4],out=items.map((v,i)=>i%2===0?2*v:items[i-1]+v),sum=out.slice(1).reduce((s,x)=>s+x,0);
   m("index-loop-slice","Trace indexed looping, append and final slicing. What prints?",sum,[out.reduce((s,x)=>s+x,0),sum+K,sum-4],`Generated output list ${JSON.stringify(out)}; sum of [1:] is ${sum}.`,"Build the intermediate output list before slicing.",`numbers = [1, 2, ${K}, 4]\noutput = []\nfor i in range(len(numbers)):\n    if i % 2 == 0:\n        output.append(numbers[i] * 2)\n    else:\n        output.append(numbers[i-1] + numbers[i])\nprint(sum(output[1:]))`);
-  const total=12+2*K;
+  const total=10+2*K;
   m("mutating-function-alias","Trace list mutation, aliasing and a return value. What prints?",total,[total-K,total+K,8+K],`First item changes from 2 to ${2+K}; function returns ${8+K}, then x[0]=${2+K}; total=${total}.`,"x and y refer to the same mutable list.",`def change(items):\n    items[0] += ${K}\n    return items[0] + items[-1]\nx = [2, 4, 6]\ny = x\nz = change(y)\nprint(z + x[0])`);
   const N=r([5,6,7]);let a=0;for(let i=1;i<=N;i++){if(i%2===0)a+=i;else if(i>3)a-=1;else a+=2;}
   m("conditional-accumulator","Trace if/elif/else inside a loop. What prints?",a,[a+N,a-2,a+1],`Exactly one branch per iteration; final acc=${a}.`,"Table n, branch and running acc.",`acc = 0\nfor n in range(1, ${N+1}):\n    if n % 2 == 0:\n        acc += n\n    elif n > 3:\n        acc -= 1\n    else:\n        acc += 2\nprint(acc)`);
