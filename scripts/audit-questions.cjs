@@ -5,13 +5,14 @@ const fs=require('node:fs'),vm=require('node:vm'),cp=require('node:child_process
 const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const bank=fs.readFileSync(path.join(root,'question-bank.js'),'utf8');
+const separator=fs.readFileSync(path.join(root,'separator-bank.js'),'utf8');
 const speed=fs.readFileSync(path.join(root,'speed-rankings.js'),'utf8');
 const main=html.match(/<script>\s*\/\* ENG1013 Exam Pilot([\s\S]*?)<\/script>/);
 if(!main)throw Error('Cannot locate main study engine script');
 const stub={innerHTML:'',textContent:'',style:{},classList:{add(){},remove(){}},addEventListener(){},focus(){},value:''};
 const context={document:{getElementById(){return {...stub}},addEventListener(){},querySelector(){return {...stub}}},window:{addEventListener(){},scrollTo(){}},localStorage:{getItem(){return null},setItem(){}},location:{hash:'#dashboard'},history:{replaceState(){}},navigator:{},setInterval(){},setTimeout(){},clearTimeout(){},requestAnimationFrame(fn){fn()},console,Date,Intl};
 vm.createContext(context);
-vm.runInContext(bank+'\n'+speed+'\n'+main[0].slice(8,-9),context,{timeout:15000});
+vm.runInContext(bank+'\n'+separator+'\n'+speed+'\n'+main[0].slice(8,-9),context,{timeout:15000});
 const run=code=>vm.runInContext(code,context,{timeout:15000});
 const topics=run('TOPICS.map(x=>x.id)');
 const errors=[],counts={};
@@ -113,6 +114,45 @@ for(const id of topics){
 }
 const checker=run('(()=>{const q=makeOriginalQuestion("S3",2,["independent-if","if-elif-else","and","or","not","chained-comparison","precedence","nested","variable-update","short-circuit"]);return q})()');
 if(checker.variant==='not-equal'&&!['Valid','Invalid'].includes(checker.expected))errors.push('Unexpected even-number answer');
-const result={topics:topics.length,questionsChecked,pythonExecutions,numericChecks,errors:errors.slice(0,40),totalErrors:errors.length,topicFamilies:counts};
+const hardAudit=(function auditHard(){
+ let checked=0,checkedPython=0,numeric=0;
+ const sectionCounts={Electrical:0,Software:0,Materials:0,Ethics:0};
+ for(const id of topics){
+  const keys=new Set();
+  for(let i=0;i<45;i++){
+   const q=run('separatorQuestion('+JSON.stringify(id)+')');
+   checked++;keys.add(q.variant);
+   if(!q.separator||q.level!==4||!q.sourceNote)errors.push(id+' missing separator marker, level or source');
+   if(!q.variant?.startsWith('sep-'))errors.push(id+' missing distinct hard method family');
+   if(q.kind==='mcq'){
+    if(!q.options.includes(q.expected))errors.push(id+' missing expected option: '+q.prompt);
+    if(new Set(q.options).size<3)errors.push(id+' fewer than three options: '+q.prompt);
+    if(q.code){
+     checkedPython++;
+     const py=cp.spawnSync('python3',['-c',q.code],{encoding:'utf8',timeout:3500,maxBuffer:15000});
+     const got=py.stdout.trim().replace(/\r/g,'').split('\n').join(' then ');
+     if(py.status!==0||got!==String(q.expected))errors.push(id+'/'+q.variant+' Python expected '+JSON.stringify(q.expected)+' got '+JSON.stringify(got)+' err '+py.stderr+' code '+q.code);
+    }
+   }else if(q.kind==='numeric'){
+    numeric++;
+    if(!Number.isFinite(q.expected))errors.push(id+'/'+q.variant+' NaN expected');
+    if(!run('grade('+JSON.stringify(q)+','+JSON.stringify(String(q.expected))+')'))errors.push(id+'/'+q.variant+' correct number marked wrong');
+   }else errors.push(id+' unexpected hard kind');
+  }
+  if(!['E7','E10','S8','S10','M4'].includes(id)&&keys.size<2)errors.push(id+' hard bank needs at least two distinct method families');
+ }
+ const mock=run('separatorMockQuestions()');
+ if(mock.length!==40)errors.push('Hard mock has '+mock.length+' questions, expected 40');
+ for(const q of mock)sectionCounts[run('TMAP['+JSON.stringify(q.topic)+'].section')]++;
+ for(const section of Object.keys(sectionCounts))if(sectionCounts[section]!=={Electrical:19,Software:15,Materials:5,Ethics:1}[section])errors.push(section+' hard mock weighting wrong: '+sectionCounts[section]);
+ const masteryBefore=run('JSON.stringify(state.progress)');
+ run('newMock(true)');
+ if(!run('state.mock?.hard && state.mock.questions.length===40'))errors.push('Hard mock button fails to start 40 questions');
+ run('finishMock(true)');
+ const masteryAfter=run('JSON.stringify(state.progress)');
+ if(masteryBefore!==masteryAfter)errors.push('Hard mock accidentally changes ordinary mastery');
+ return {hardQuestionsChecked:checked,hardPythonProgramsChecked:checkedPython,hardNumericChecks:numeric,hardSectionCounts:sectionCounts};
+})();
+const result={topics:topics.length,questionsChecked,pythonExecutions,numericChecks,...hardAudit,errors:errors.slice(0,40),totalErrors:errors.length,topicFamilies:counts};
 console.log(JSON.stringify(result,null,2));
 if(errors.length)process.exitCode=1;
