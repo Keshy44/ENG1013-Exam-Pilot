@@ -5,20 +5,20 @@ function circuitDiagram(q){
  // Hard questions specify new topologies in prose; don't show a generic diagram that may be wrong.
  if(q?.separator)return '';
  if(!q||!q.prompt||!/^E(?:1|2|3|4|5|6|8|9|11|12|13|14)$/.test(q.topic))return '';
- const p=q.prompt, t=q.topic, ink='#aac4d6',aqua='#4bd7d5',white='#edf7ff',muted='#9db6c7';
+ const p=q.prompt, t=q.topic, ink='#243343',aqua='#175d82',white='#172733',muted='#4c5c68';
  const L=(x,y,u,v,c=ink)=>'<line x1="'+x+'" y1="'+y+'" x2="'+u+'" y2="'+v+'" stroke="'+c+'" stroke-width="2.5" stroke-linecap="round"/>';
  const T=(x,y,v,c=white,size=15,anchor='middle')=>'<text x="'+x+'" y="'+y+'" font-size="'+size+'" font-family="Arial,system-ui,sans-serif" font-weight="600" fill="'+c+'" text-anchor="'+anchor+'">'+esc(v)+'</text>';
- const B=(x,y,w,h)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="2" stroke="'+ink+'" stroke-width="2.5" fill="#10253a"/>';
+ const B=(x,y,w,h)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="2" stroke="'+ink+'" stroke-width="2.5" fill="#ffffff"/>';
  const RH=(x,y,v)=>B(x,y-14,76,28)+T(x+38,y-24,v);
  const RV=(x,y,v)=>B(x-14,y,28,60)+T(x+27,y+34,v,white,14,'start');
  const CH=(x,y,v)=>L(x,y-22,x,y+22)+L(x+16,y-22,x+16,y+22)+T(x+8,y-30,v);
  const CV=(x,y,v)=>L(x-23,y,x+23,y)+L(x-23,y+14,x+23,y+14)+T(x+38,y+10,v,white,14,'start');
  const G=(x,y)=>L(x,y,x,y+7)+L(x-19,y+7,x+19,y+7)+L(x-12,y+13,x+12,y+13)+L(x-5,y+19,x+5,y+19);
  const N=(x,y,name)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+aqua+'"/>'+(name?T(x,y-19,name,aqua,17):'');
- const P=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5.5" stroke="'+aqua+'" stroke-width="2" fill="#0b192b"/>';
+ const P=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5.5" stroke="'+aqua+'" stroke-width="2" fill="#ffffff"/>';
  const A=(x,y,u,v)=>L(x,y,u,v,aqua)+L(u,v,u-9+(v-y)*.1,v-9-(u-x)*.1,aqua)+L(u,v,u-9-(v-y)*.1,v+9-(u-x)*.1,aqua);
- const VS=(x,y,v)=>'<circle cx="'+x+'" cy="'+y+'" r="24" stroke="'+ink+'" stroke-width="2.5" fill="#102538"/>'+T(x,y-6,'+',aqua,17)+T(x,y+15,'−',aqua,20)+T(x-30,y-38,v,white,14,'start');
- const IS=(x,y,v)=>'<circle cx="'+x+'" cy="'+y+'" r="24" stroke="'+ink+'" stroke-width="2.5" fill="#102538"/>'+A(x,y+12,x,y-12)+T(x,y+44,v);
+ const VS=(x,y,v)=>'<circle cx="'+x+'" cy="'+y+'" r="24" stroke="'+ink+'" stroke-width="2.5" fill="#ffffff"/>'+T(x,y-6,'+',aqua,17)+T(x,y+15,'−',aqua,20)+T(x-30,y-38,v,white,14,'start');
+ const IS=(x,y,v)=>'<circle cx="'+x+'" cy="'+y+'" r="24" stroke="'+ink+'" stroke-width="2.5" fill="#ffffff"/>'+A(x,y+12,x,y-12)+T(x,y+44,v);
  const SOURCE=(v,x=64)=>VS(x,111,v)+L(x,48,x,87)+L(x,135,x,182);
  let h='',description='';
  if(t==='E1'){
@@ -94,7 +94,7 @@ function circuitDiagram(q){
   h=SOURCE(m[1]+' V')+L(64,48,141,48)+RH(141,48,m[4]+' Ω')+L(217,48,276,48);
   const n=+m[2];for(let i=0;i<n;i++){
    const x=276+129*i;
-   h+='<polygon points="'+(x+6)+',28 '+(x+6)+',68 '+(x+44)+',48" stroke="'+aqua+'" stroke-width="2.4" fill="#0f3c43"/>'+L(x+47,27,x+47,69,aqua)+L(x+47,48,x+125,48)+T(x+26,88,m[3]+' V',muted,13);
+   h+='<polygon points="'+(x+6)+',28 '+(x+6)+',68 '+(x+44)+',48" stroke="'+aqua+'" stroke-width="2.4" fill="#ffffff"/>'+L(x+47,27,x+47,69,aqua)+L(x+47,48,x+125,48)+T(x+26,88,m[3]+' V',muted,13);
   }
   const end=276+n*129-4;h+=L(end,48,609,48)+L(609,48,609,182)+L(609,182,64,182);
   description='LEDs in series with one current-limiting resistor';
