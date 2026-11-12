@@ -7,13 +7,14 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const bank=fs.readFileSync(path.join(root,'question-bank.js'),'utf8');
 const separator=fs.readFileSync(path.join(root,'separator-bank.js'),'utf8');
 const diagrams=fs.readFileSync(path.join(root,'diagrams.js'),'utf8');
+const examFigures=fs.readFileSync(path.join(root,'exam-circuits.js'),'utf8');
 const speed=fs.readFileSync(path.join(root,'speed-rankings.js'),'utf8');
 const main=html.match(/<script>\s*\/\* ENG1013 Exam Pilot([\s\S]*?)<\/script>/);
 if(!main)throw Error('Cannot locate main study engine script');
 const stub={innerHTML:'',textContent:'',style:{},classList:{add(){},remove(){}},addEventListener(){},focus(){},value:''};
 const context={document:{getElementById(){return {...stub}},addEventListener(){},querySelector(){return {...stub}}},window:{addEventListener(){},scrollTo(){}},localStorage:{getItem(){return null},setItem(){}},location:{hash:'#dashboard'},history:{replaceState(){}},navigator:{},setInterval(){},setTimeout(){},clearTimeout(){},requestAnimationFrame(fn){fn()},console,Date,Intl};
 vm.createContext(context);
-vm.runInContext(diagrams+'\n'+bank+'\n'+separator+'\n'+speed+'\n'+main[0].slice(8,-9),context,{timeout:15000});
+vm.runInContext(diagrams+'\n'+examFigures+'\n'+bank+'\n'+separator+'\n'+speed+'\n'+main[0].slice(8,-9),context,{timeout:15000});
 const run=code=>vm.runInContext(code,context,{timeout:15000});
 const topics=run('TOPICS.map(x=>x.id)');
 const errors=[],counts={};
@@ -116,13 +117,18 @@ for(const id of topics){
 const checker=run('(()=>{const q=makeOriginalQuestion("S3",2,["independent-if","if-elif-else","and","or","not","chained-comparison","precedence","nested","variable-update","short-circuit"]);return q})()');
 if(checker.variant==='not-equal'&&!['Valid','Invalid'].includes(checker.expected))errors.push('Unexpected even-number answer');
 const hardAudit=(function auditHard(){
- let checked=0,checkedPython=0,numeric=0;
+ let checked=0,checkedPython=0,numeric=0,renderedDiagrams=0;
  const sectionCounts={Electrical:0,Software:0,Materials:0,Ethics:0};
  for(const id of topics){
   const keys=new Set();
   for(let i=0;i<45;i++){
    const q=run('separatorQuestion('+JSON.stringify(id)+')');
    checked++;keys.add(q.variant);
+   if(q.topic.startsWith('E')){
+    const rendered=run('circuitDiagram('+JSON.stringify(q)+')');
+    if(!rendered||!rendered.includes('<svg')||!rendered.includes('exam-figure')||!rendered.includes('</svg>'))errors.push(q.topic+'/'+q.variant+' hard diagram missing or malformed');
+    else renderedDiagrams++;
+   }
    if(!q.separator||q.level!==4||!q.sourceNote)errors.push(id+' missing separator marker, level or source');
    if(!q.variant?.startsWith('sep-'))errors.push(id+' missing distinct hard method family');
    if(q.kind==='mcq'){
@@ -152,7 +158,7 @@ const hardAudit=(function auditHard(){
  run('finishMock(true)');
  const masteryAfter=run('JSON.stringify(state.progress)');
  if(masteryBefore!==masteryAfter)errors.push('Hard mock accidentally changes ordinary mastery');
- return {hardQuestionsChecked:checked,hardPythonProgramsChecked:checkedPython,hardNumericChecks:numeric,hardSectionCounts:sectionCounts};
+ return {hardQuestionsChecked:checked,hardPythonProgramsChecked:checkedPython,hardNumericChecks:numeric,hardCircuitDiagramsChecked:renderedDiagrams,hardSectionCounts:sectionCounts};
 })();
 const result={topics:topics.length,questionsChecked,pythonExecutions,numericChecks,...hardAudit,errors:errors.slice(0,40),totalErrors:errors.length,topicFamilies:counts};
 console.log(JSON.stringify(result,null,2));
